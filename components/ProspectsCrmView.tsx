@@ -32,8 +32,10 @@ import {
   Copy,
   CheckSquare,
   Square,
-  ChevronRight
+  ChevronRight,
+  UserPlus
 } from 'lucide-react';
+import { AddProspectModal } from '@/components/AddProspectModal';
 
 interface ProspectsCrmViewProps {
   savedLeads: SavedLead[];
@@ -43,6 +45,7 @@ interface ProspectsCrmViewProps {
   onExportCsv: (leadsToExport: SavedLead[]) => void;
   isExporting: boolean;
   theme?: 'dark' | 'light';
+  onAddManualLead?: (newLead: SavedLead, shouldAudit?: boolean) => Promise<void>;
 }
 
 const STATUS_CONFIG: Record<OutreachStatus, { label: string; color: string; bg: string; border: string }> = {
@@ -74,12 +77,14 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
   onExportCsv,
   isExporting,
   theme = 'dark',
+  onAddManualLead,
 }) => {
   const [activeListFilter, setActiveListFilter] = useState<string>('all');
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   // Quick Popovers
   const [activeNotesLeadId, setActiveNotesLeadId] = useState<string | null>(null);
@@ -344,6 +349,16 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
             </button>
           </div>
 
+          {/* Manual Add Prospect Button */}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="neo-btn flex items-center gap-1.5 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black px-3.5 py-2 shadow-[2.5px_2.5px_0px_0px_#000] cursor-pointer"
+            title="Insert a prospect manually"
+          >
+            <UserPlus className="w-4 h-4 stroke-[2.5]" />
+            <span>+ ADD PROSPECT</span>
+          </button>
+
           {/* Export CSV */}
           <button
             onClick={() => onExportCsv(leadsForExport)}
@@ -578,6 +593,15 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
                 ? `No leads currently in "${activeListFilter}". Save leads from the map or move them to this list.`
                 : 'Discover businesses on the map and click "+ Save" to build your target outreach list.'}
             </p>
+            <div className="mt-5 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="neo-btn flex items-center gap-1.5 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black px-4 py-2.5 shadow-[2.5px_2.5px_0px_0px_#000] cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 stroke-[2.5]" />
+                <span>+ ADD PROSPECT MANUALLY</span>
+              </button>
+            </div>
           </div>
         ) : viewMode === 'table' ? (
           /* ========================================================= */
@@ -1101,6 +1125,20 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Manual Prospect Insertion Modal */}
+      <AddProspectModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSaveLead={async (newLead, shouldAudit) => {
+          if (onAddManualLead) {
+            await onAddManualLead(newLead, shouldAudit);
+          }
+        }}
+        availableLists={availableLists}
+        currentList={activeListFilter}
+        theme={theme}
+      />
     </div>
   );
 };

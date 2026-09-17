@@ -393,6 +393,63 @@ export default function HomePage() {
     }
   };
 
+  const handleAddManualLead = async (newLead: SavedLead, shouldAudit: boolean = false) => {
+    const updatedLeads = [newLead, ...savedLeads.filter(l => l.id !== newLead.id)];
+    updateSavedLeadsState(updatedLeads);
+
+    try {
+      await fetch('/api/leads/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead: newLead }),
+      });
+    } catch (e) {
+      console.warn('Failed to save manual lead to server:', e);
+    }
+
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 },
+      });
+    } catch (e) {}
+
+    if (shouldAudit && newLead.website_url) {
+      try {
+        const tempBusiness: Business = {
+          id: newLead.business_id,
+          name: newLead.name,
+          phone: newLead.phone,
+          address: newLead.address,
+          website_url: newLead.website_url,
+          latitude: 45.5855,
+          longitude: 10.6500,
+        };
+        const res = await fetch('/api/audit/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businesses: [tempBusiness] }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.businesses && data.businesses[0]?.audit) {
+            const audited = data.businesses[0];
+            const refreshedLead: SavedLead = {
+              ...newLead,
+              audit_score: audited.audit?.score ?? null,
+              design_score: audited.audit?.ai_critique?.design_score ?? null,
+              audit: audited.audit,
+            };
+            handleUpdateSavedLead(refreshedLead);
+          }
+        }
+      } catch (err) {
+        console.warn('Manual lead auto-audit failed:', err);
+      }
+    }
+  };
+
   const handleExportCsv = async (leadsToExport: (Business | SavedLead)[]) => {
     try {
       setIsExporting(true);
@@ -521,6 +578,7 @@ export default function HomePage() {
           onExportCsv={handleExportCsv}
           isExporting={isExporting}
           theme={theme}
+          onAddManualLead={handleAddManualLead}
         />
       )}
 
