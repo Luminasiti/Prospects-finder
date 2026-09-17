@@ -50,9 +50,9 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 // Generate realistic simulated leads if API is offline or returns empty
 function generateSimulatedLeads(category: string, bounds: SearchBounds): Business[] {
-  let centerLat = 40.7128;
-  let centerLng = -74.006;
-  let radiusMeters = 3000;
+  let centerLat = 45.5855;
+  let centerLng = 10.6500;
+  let radiusMeters = 5000;
 
   if (bounds.type === 'radius' && bounds.center) {
     centerLat = bounds.center.lat;
@@ -180,9 +180,9 @@ export async function POST(req: NextRequest) {
 
     if (apiKey && apiKey.trim().length > 10) {
       try {
-        let centerLat = 40.7128;
-        let centerLng = -74.006;
-        let radius = 3000;
+        let centerLat = 45.5855;
+        let centerLng = 10.6500;
+        let radius = 5000;
 
         if (bounds.type === 'radius' && bounds.center) {
           centerLat = bounds.center.lat;

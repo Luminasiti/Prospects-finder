@@ -17,6 +17,14 @@ body {
   overflow-x: hidden;
 }
 
+html.light,
+html.light body,
+body.light,
+.light {
+  background-color: #F4F0EA;
+  color: #0f172a;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 7px;

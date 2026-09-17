@@ -85,12 +85,12 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const initialLat = bounds.center?.lat || 40.7128;
-    const initialLng = bounds.center?.lng || -74.006;
+    const initialLat = bounds.center?.lat || 45.5855;
+    const initialLng = bounds.center?.lng || 10.6500;
 
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
-      zoom: 13,
+      zoom: 12,
       zoomControl: false,
     });
 

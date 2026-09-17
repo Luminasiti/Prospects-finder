@@ -241,7 +241,9 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {/* Bottom Row: Quick Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
-        <span className="text-slate-400 text-[11px] font-black uppercase tracking-wider shrink-0">Popular:</span>
+        <span className={`${isLight ? 'text-slate-700' : 'text-slate-400'} text-[11px] font-black uppercase tracking-wider shrink-0`}>
+          Popular:
+        </span>
         {QUICK_CATEGORIES.map((cat) => (
           <button
             key={cat}
@@ -249,14 +251,16 @@ export const ControlBar: React.FC<ControlBarProps> = ({
             className={`px-3 py-1 rounded-xl shrink-0 transition-all font-black text-xs cursor-pointer border-2 border-black ${
               category.toLowerCase() === cat.toLowerCase()
                 ? 'bg-[#FFE600] text-black shadow-[2px_2px_0px_0px_#000]'
-                : 'bg-slate-800 text-slate-200 hover:bg-slate-700 shadow-[1.5px_1.5px_0px_0px_#000]'
+                : isLight
+                  ? 'bg-white text-slate-800 hover:bg-slate-100 shadow-[1.5px_1.5px_0px_0px_#000]'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700 shadow-[1.5px_1.5px_0px_0px_#000]'
             }`}
           >
             {cat}
           </button>
         ))}
 
-        <div className="ml-auto text-slate-400 text-[11px] font-bold hidden lg:block shrink-0">
+        <div className={`ml-auto ${isLight ? 'text-slate-700' : 'text-slate-400'} text-[11px] font-bold hidden lg:block shrink-0`}>
           {isRadius ? (
             <span>💡 <strong>Radius:</strong> Click map to reposition search zone</span>
           ) : (

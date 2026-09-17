@@ -60,8 +60,8 @@ export const SingleAuditModal: React.FC<SingleAuditModalProps> = ({
       website_url: cleanUrl,
       phone: phone.trim() || 'Not listed',
       address: address.trim() || 'Custom audit target',
-      latitude: 40.7128,
-      longitude: -74.006,
+      latitude: 45.5855,
+      longitude: 10.6500,
       status: 'pending_audit',
     };
 

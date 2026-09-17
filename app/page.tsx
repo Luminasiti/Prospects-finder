@@ -41,8 +41,8 @@ export default function HomePage() {
   const [category, setCategory] = useState('Plumber');
   const [bounds, setBounds] = useState<SearchBounds>({
     type: 'radius',
-    center: { lat: 40.7128, lng: -74.006 }, // New York default center
-    radius: 3000,
+    center: { lat: 45.5855, lng: 10.6500 }, // Lake Garda, Italy default center
+    radius: 5000,
   });
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
