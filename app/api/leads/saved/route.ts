@@ -31,6 +31,7 @@ export async function GET() {
       audit_score: row.audit_score,
       design_score: row.design_score,
       outreach_status: row.outreach_status || 'not_contacted',
+      list_name: row.list_name || row.custom_fields?.list_name || 'General Leads',
       follow_up_date: row.follow_up_date || null,
       notes: row.notes || '',
       custom_fields: row.custom_fields || {},
@@ -62,8 +63,12 @@ export async function POST(req: NextRequest) {
       ...l,
       id: l.id || crypto.randomUUID(),
       outreach_status: l.outreach_status || 'not_contacted',
+      list_name: l.list_name || l.custom_fields?.list_name || 'General Leads',
       notes: l.notes || '',
-      custom_fields: l.custom_fields || {},
+      custom_fields: {
+        ...(l.custom_fields || {}),
+        list_name: l.list_name || l.custom_fields?.list_name || 'General Leads',
+      },
       saved_at: l.saved_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }));

@@ -73,6 +73,7 @@ export interface SavedLead {
   audit_score: number | null;
   design_score?: number | null;
   outreach_status: OutreachStatus;
+  list_name?: string; // Name of the list the lead belongs to (e.g., 'Default', 'High Priority', etc.)
   follow_up_date?: string | null;
   notes?: string;
   custom_fields: Record<string, string>;

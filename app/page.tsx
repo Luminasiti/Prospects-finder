@@ -58,10 +58,46 @@ export default function HomePage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isSingleAuditModalOpen, setIsSingleAuditModalOpen] = useState(false);
   const [auditingLeadId, setAuditingLeadId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Load theme from localStorage
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('prospectpulse_theme') as 'dark' | 'light';
+      if (savedTheme) {
+        setTheme(savedTheme);
+        document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+        document.documentElement.classList.toggle('light', savedTheme === 'light');
+      }
+    } catch {}
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try {
+      localStorage.setItem('prospectpulse_theme', next);
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      document.documentElement.classList.toggle('light', next === 'light');
+    } catch {}
+  };
 
   // Set of saved business IDs for fast lookup
   const savedBusinessIds = useMemo(() => {
     return new Set(savedLeads.map(l => l.business_id));
+  }, [savedLeads]);
+
+  // Compute all existing list names
+  const existingLists = useMemo(() => {
+    const lists = savedLeads.map(l => l.list_name || 'General Leads');
+    try {
+      const cached = localStorage.getItem('prospectpulse_custom_lists');
+      if (cached) {
+        const custom = JSON.parse(cached);
+        if (Array.isArray(custom)) lists.push(...custom);
+      }
+    } catch {}
+    return Array.from(new Set(['General Leads', ...lists]));
   }, [savedLeads]);
 
   // Redesign count (<50)
@@ -264,15 +300,20 @@ export default function HomePage() {
     await handleAuditSingleLead(business);
   };
 
-  const handleSaveToCrm = async (businessesToSave: Business[]) => {
+  const handleSaveToCrm = async (businessesToSave: Business[], listName: string = 'General Leads') => {
     const newSavedItems: SavedLead[] = businessesToSave.map(b => {
       const existing = savedLeads.find(l => l.business_id === b.id);
       if (existing) {
         return {
           ...existing,
+          list_name: listName || existing.list_name || 'General Leads',
           audit_score: b.audit?.score ?? existing.audit_score,
           design_score: b.audit?.ai_critique?.design_score ?? existing.design_score,
           audit: b.audit || existing.audit,
+          custom_fields: {
+            ...(existing.custom_fields || {}),
+            list_name: listName || existing.list_name || 'General Leads',
+          },
         };
       }
 
@@ -286,9 +327,10 @@ export default function HomePage() {
         audit_score: b.audit?.score ?? null,
         design_score: b.audit?.ai_critique?.design_score ?? null,
         outreach_status: 'not_contacted',
+        list_name: listName || 'General Leads',
         follow_up_date: null,
         notes: '',
-        custom_fields: {},
+        custom_fields: { list_name: listName || 'General Leads' },
         saved_at: new Date().toISOString(),
         audit: b.audit,
       };
@@ -401,7 +443,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div className={`flex flex-col h-screen w-screen overflow-hidden transition-colors ${
+      theme === 'light' ? 'bg-[#F4F0EA] text-slate-900 light' : 'bg-slate-950 text-slate-100 dark'
+    }`}>
       {/* 1. Top Navbar */}
       <Navbar
         onOpenSettings={() => setIsConfigModalOpen(true)}
@@ -413,6 +457,8 @@ export default function HomePage() {
         onViewChange={setActiveView}
         userEmail={userEmail}
         onLogout={handleLogout}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* VIEW 1: MAP & DISCOVERY */}
@@ -431,6 +477,7 @@ export default function HomePage() {
             auditProgress={auditProgress}
             leadCount={businesses.length}
             onOpenSingleAuditModal={() => setIsSingleAuditModalOpen(true)}
+            theme={theme}
           />
 
           {/* 3. Main Workspace: Map (Left/Center) + Split Results Drawer (Right) */}
@@ -457,6 +504,8 @@ export default function HomePage() {
               savedBusinessIds={savedBusinessIds}
               onAuditSingleLead={handleAuditSingleLead}
               auditingLeadId={auditingLeadId}
+              theme={theme}
+              existingLists={existingLists}
             />
           </main>
         </>
@@ -471,6 +520,7 @@ export default function HomePage() {
           onSelectBusinessForModal={(b) => setSelectedBusiness(b)}
           onExportCsv={handleExportCsv}
           isExporting={isExporting}
+          theme={theme}
         />
       )}
 

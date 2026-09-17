@@ -26,6 +26,7 @@ interface ControlBarProps {
   auditProgress: { current: number; total: number } | null;
   leadCount: number;
   onOpenSingleAuditModal?: () => void;
+  theme?: 'dark' | 'light';
 }
 
 const QUICK_CATEGORIES = [
@@ -51,7 +52,9 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   auditProgress,
   leadCount,
   onOpenSingleAuditModal,
+  theme = 'dark',
 }) => {
+  const isLight = theme === 'light';
   const isRadius = bounds.type === 'radius';
 
   const handleToolToggle = (type: 'radius' | 'polygon') => {
@@ -85,7 +88,9 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border-b-2 border-black px-6 py-3 flex flex-col gap-3 shadow-[0px_3px_0px_0px_#000]">
+    <div className={`border-b-2 border-black px-6 py-3 flex flex-col gap-3 shadow-[0px_3px_0px_0px_#000] transition-colors ${
+      isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-900 text-white'
+    }`}>
       {/* Top Row: Category Input, Draw Controls & Action Button */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Niche / Keyword input */}

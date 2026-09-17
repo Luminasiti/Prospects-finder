@@ -18,6 +18,7 @@ interface SingleAuditModalProps {
   onClose: () => void;
   onAuditSingle: (business: Business) => Promise<void>;
   isAuditing: boolean;
+  theme?: 'dark' | 'light';
 }
 
 export const SingleAuditModal: React.FC<SingleAuditModalProps> = ({
@@ -25,7 +26,9 @@ export const SingleAuditModal: React.FC<SingleAuditModalProps> = ({
   onClose,
   onAuditSingle,
   isAuditing,
+  theme = 'dark',
 }) => {
+  const isLight = theme === 'light';
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Local Business');
@@ -75,17 +78,23 @@ export const SingleAuditModal: React.FC<SingleAuditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-slate-950 border-3 border-black rounded-3xl shadow-[8px_8px_0px_0px_#000] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className={`relative w-full max-w-lg border-3 border-black rounded-3xl shadow-[8px_8px_0px_0px_#000] overflow-hidden flex flex-col ${
+        isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'
+      }`}>
         {/* Header */}
-        <div className="p-5 border-b-2 border-black bg-slate-900 flex items-center justify-between">
+        <div className={`p-5 border-b-2 border-black flex items-center justify-between ${
+          isLight ? 'bg-slate-100' : 'bg-slate-900'
+        }`}>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-[#FFE600] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000]">
               <Zap className="w-4 h-4 text-black fill-black" />
             </div>
             <div>
-              <h3 className="font-black text-base text-white">AUDIT SINGLE WEBSITE</h3>
-              <p className="text-[11px] font-bold text-slate-400">Run instant technical audit & AI design critique for any URL</p>
+              <h3 className="font-black text-base text-inherit">AUDIT SINGLE WEBSITE</h3>
+              <p className={`text-[11px] font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                Run instant technical audit & AI design critique for any URL
+              </p>
             </div>
           </div>
 

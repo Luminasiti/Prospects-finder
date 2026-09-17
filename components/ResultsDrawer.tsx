@@ -27,6 +27,7 @@ import {
   Users,
   Loader2
 } from 'lucide-react';
+import { SaveToListModal } from '@/components/SaveToListModal';
 
 interface ResultsDrawerProps {
   businesses: Business[];
@@ -36,10 +37,12 @@ interface ResultsDrawerProps {
   onToggleCollapse: () => void;
   onExportCsv: (filteredBusinesses: Business[]) => void;
   isExporting: boolean;
-  onSaveToCrm: (businessesToSave: Business[]) => void;
+  onSaveToCrm: (businessesToSave: Business[], listName?: string) => void;
   savedBusinessIds: Set<string>;
   onAuditSingleLead?: (business: Business) => Promise<void>;
   auditingLeadId?: string | null;
+  theme?: 'dark' | 'light';
+  existingLists?: string[];
 }
 
 export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
@@ -54,11 +57,23 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
   savedBusinessIds,
   onAuditSingleLead,
   auditingLeadId,
+  theme = 'dark',
+  existingLists = [],
 }) => {
+  const isLight = theme === 'light';
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'score_asc' | 'score_desc' | 'name'>('score_asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // Save to list popup state
+  const [isSaveToListOpen, setIsSaveToListOpen] = useState(false);
+  const [leadsPendingSave, setLeadsPendingSave] = useState<Business[]>([]);
+
+  const handleInitiateSave = (leads: Business[]) => {
+    setLeadsPendingSave(leads);
+    setIsSaveToListOpen(true);
+  };
 
   // Compute metric pill counters
   const metrics = useMemo(() => {
@@ -174,9 +189,13 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
   }
 
   return (
-    <aside className="w-full lg:w-[480px] xl:w-[540px] h-full bg-slate-950 border-l-2 border-black flex flex-col z-20 shadow-[-4px_0px_0px_0px_#000] shrink-0 overflow-hidden">
+    <aside className={`w-full lg:w-[480px] xl:w-[540px] h-full border-l-2 border-black flex flex-col z-20 shadow-[-4px_0px_0px_0px_#000] shrink-0 overflow-hidden transition-colors ${
+      isLight ? 'bg-[#F4F0EA] text-slate-900' : 'bg-slate-950 text-white'
+    }`}>
       {/* Top Drawer Header: Title & Actions */}
-      <div className="p-4 border-b-2 border-black bg-slate-900 flex items-center justify-between gap-3">
+      <div className={`p-4 border-b-2 border-black flex items-center justify-between gap-3 ${
+        isLight ? 'bg-white' : 'bg-slate-900'
+      }`}>
         <div className="flex items-center gap-2">
           <button
             onClick={onToggleCollapse}
@@ -186,13 +205,13 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
             <ChevronRight className="w-4 h-4 stroke-[3]" />
           </button>
           <div>
-            <h2 className="font-black text-sm text-white flex items-center gap-2">
+            <h2 className="font-black text-sm text-inherit flex items-center gap-2">
               <span>DISCOVERED LEADS</span>
               <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-[#FFE600] text-black border-2 border-black shadow-[1.5px_1.5px_0px_0px_#000]">
                 {businesses.length}
               </span>
             </h2>
-            <p className="text-[11px] font-bold text-slate-400">Select leads to move to CRM or export</p>
+            <p className={`text-[11px] font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Select leads to move to CRM or export</p>
           </div>
         </div>
 
@@ -222,7 +241,7 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onSaveToCrm(selectedBusinessesList)}
+              onClick={() => handleInitiateSave(selectedBusinessesList)}
               className="neo-btn flex items-center gap-1 bg-black text-white px-3 py-1 text-xs shadow-[2px_2px_0px_0px_#000]"
             >
               <BookmarkPlus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -378,9 +397,11 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                 onClick={() => onSelectBusiness(b)}
                 className={`neo-card p-4 transition-all cursor-pointer ${
                   isChecked
-                    ? 'bg-[#38BDF8]/20 border-2 border-black shadow-[4px_4px_0px_0px_#38BDF8]'
+                    ? isLight ? 'bg-sky-50 border-2 border-black shadow-[4px_4px_0px_0px_#38BDF8]' : 'bg-[#38BDF8]/20 border-2 border-black shadow-[4px_4px_0px_0px_#38BDF8]'
                     : isSelected
-                    ? 'bg-slate-900 border-2 border-[#FFE600] shadow-[4px_4px_0px_0px_#FFE600]'
+                    ? isLight ? 'bg-amber-50 border-2 border-black shadow-[4px_4px_0px_0px_#FFE600]' : 'bg-slate-900 border-2 border-[#FFE600] shadow-[4px_4px_0px_0px_#FFE600]'
+                    : isLight
+                    ? 'bg-white hover:bg-slate-50 border-2 border-black shadow-[3.5px_3.5px_0px_0px_#000]'
                     : 'bg-slate-900 hover:bg-slate-800/90 border-2 border-black shadow-[3.5px_3.5px_0px_0px_#000]'
                 }`}
               >
@@ -519,7 +540,7 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSaveToCrm([b]);
+                        handleInitiateSave([b]);
                       }}
                       className={`neo-btn text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-[2px_2px_0px_0px_#000] ${
                         isSaved
@@ -541,6 +562,20 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
           })
         )}
       </div>
+
+      {/* Save to List Modal Popup */}
+      <SaveToListModal
+        isOpen={isSaveToListOpen}
+        onClose={() => setIsSaveToListOpen(false)}
+        leadsCount={leadsPendingSave.length}
+        leadName={leadsPendingSave.length === 1 ? leadsPendingSave[0].name : undefined}
+        existingLists={existingLists}
+        onConfirmSave={(listName) => {
+          onSaveToCrm(leadsPendingSave, listName);
+          setIsSaveToListOpen(false);
+        }}
+        theme={theme}
+      />
     </aside>
   );
 };
