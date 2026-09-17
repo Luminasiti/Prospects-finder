@@ -20,17 +20,22 @@ import {
   Mail, 
   Phone, 
   Globe, 
-  Layers 
+  Layers,
+  Loader2 
 } from 'lucide-react';
 
 interface AuditDetailModalProps {
   business: Business | null;
   onClose: () => void;
+  onReAudit?: (business: Business) => Promise<void>;
+  isReAuditing?: boolean;
 }
 
 export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
   business,
   onClose,
+  onReAudit,
+  isReAuditing,
 }) => {
   const [copiedPitch, setCopiedPitch] = useState(false);
   const [activeTab, setActiveTab] = useState<'technical' | 'ai_design' | 'pitch'>('technical');
@@ -98,12 +103,35 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="neo-btn bg-white hover:bg-slate-100 text-black p-1.5 shadow-[2px_2px_0px_0px_#000]"
-          >
-            <X className="w-5 h-5 stroke-[3]" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onReAudit && business.website_url && (
+              <button
+                onClick={() => onReAudit(business)}
+                disabled={isReAuditing}
+                className="neo-btn flex items-center gap-1.5 bg-[#FFE600] hover:bg-[#FACC15] disabled:opacity-50 text-black text-xs font-black px-3 py-1.5 shadow-[2px_2px_0px_0px_#000] cursor-pointer"
+                title="Re-run technical audit and AI critic for this site"
+              >
+                {isReAuditing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin stroke-[3]" />
+                    <span>AUDITING...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 fill-black" />
+                    <span>RE-RUN AUDIT</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="neo-btn bg-white hover:bg-slate-100 text-black p-1.5 shadow-[2px_2px_0px_0px_#000]"
+            >
+              <X className="w-5 h-5 stroke-[3]" />
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}

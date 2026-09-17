@@ -24,7 +24,8 @@ import {
   BookmarkPlus,
   CheckSquare,
   Square,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 
 interface ResultsDrawerProps {
@@ -37,6 +38,8 @@ interface ResultsDrawerProps {
   isExporting: boolean;
   onSaveToCrm: (businessesToSave: Business[]) => void;
   savedBusinessIds: Set<string>;
+  onAuditSingleLead?: (business: Business) => Promise<void>;
+  auditingLeadId?: string | null;
 }
 
 export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
@@ -49,6 +52,8 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
   isExporting,
   onSaveToCrm,
   savedBusinessIds,
+  onAuditSingleLead,
+  auditingLeadId,
 }) => {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -487,6 +492,30 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {onAuditSingleLead && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAuditSingleLead(b);
+                        }}
+                        disabled={!b.website_url || auditingLeadId === b.id}
+                        className="neo-btn text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-[2px_2px_0px_0px_#000] bg-[#FFE600] hover:bg-[#FACC15] disabled:opacity-40 text-black cursor-pointer"
+                        title={b.website_url ? "Run singular audit & AI critique for this website" : "No website to audit"}
+                      >
+                        {auditingLeadId === b.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin stroke-[3]" />
+                            <span>AUDITING...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-3 h-3 fill-black text-black" />
+                            <span>{audit?.score !== null && audit?.score !== undefined ? 'RE-AUDIT' : 'AUDIT'}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -503,7 +532,7 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                     </button>
 
                     <span className="text-[11px] font-black text-[#38BDF8] group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
-                      AUDIT <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+                      DETAILS <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
                     </span>
                   </div>
                 </div>

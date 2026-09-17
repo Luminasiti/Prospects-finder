@@ -9,7 +9,8 @@ import {
   Zap, 
   Sparkles, 
   Loader2, 
-  SlidersHorizontal 
+  SlidersHorizontal,
+  Globe
 } from 'lucide-react';
 import { SearchBounds } from '@/lib/types';
 
@@ -24,6 +25,7 @@ interface ControlBarProps {
   isAuditing: boolean;
   auditProgress: { current: number; total: number } | null;
   leadCount: number;
+  onOpenSingleAuditModal?: () => void;
 }
 
 const QUICK_CATEGORIES = [
@@ -48,6 +50,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   isAuditing,
   auditProgress,
   leadCount,
+  onOpenSingleAuditModal,
 }) => {
   const isRadius = bounds.type === 'radius';
 
@@ -216,6 +219,18 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               </>
             )}
           </button>
+
+          {/* Singular Custom URL Audit Button */}
+          {onOpenSingleAuditModal && (
+            <button
+              onClick={onOpenSingleAuditModal}
+              className="neo-btn flex items-center gap-1.5 bg-[#C084FC] hover:bg-purple-400 text-black px-3.5 py-2 text-xs font-black shadow-[3px_3px_0px_0px_#000] cursor-pointer"
+              title="Audit any specific website URL"
+            >
+              <Globe className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>+ Single Audit</span>
+            </button>
+          )}
         </div>
       </div>
 

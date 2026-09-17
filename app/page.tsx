@@ -8,6 +8,7 @@ import { ControlBar } from '@/components/ControlBar';
 import { ResultsDrawer } from '@/components/ResultsDrawer';
 import { ProspectsCrmView } from '@/components/ProspectsCrmView';
 import { AuditDetailModal } from '@/components/AuditDetailModal';
+import { SingleAuditModal } from '@/components/SingleAuditModal';
 import { ConfigModal } from '@/components/ConfigModal';
 import { LoginForm } from '@/components/LoginForm';
 import { Business, SearchBounds, SavedLead } from '@/lib/types';
@@ -55,6 +56,8 @@ export default function HomePage() {
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSingleAuditModalOpen, setIsSingleAuditModalOpen] = useState(false);
+  const [auditingLeadId, setAuditingLeadId] = useState<string | null>(null);
 
   // Set of saved business IDs for fast lookup
   const savedBusinessIds = useMemo(() => {
@@ -194,6 +197,71 @@ export default function HomePage() {
       setIsAuditing(false);
       setAuditProgress(null);
     }
+  };
+
+  const handleAuditSingleLead = async (business: Business) => {
+    if (!business.website_url) return;
+    try {
+      setAuditingLeadId(business.id);
+      const res = await fetch('/api/audit/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businesses: [business], scanId }),
+      });
+
+      if (!res.ok) throw new Error('Failed to audit lead');
+      const data = await res.json();
+      if (data.businesses && data.businesses.length > 0) {
+        const audited: Business = data.businesses[0];
+        setBusinesses((prev) => prev.map((b) => (b.id === audited.id ? audited : b)));
+        if (selectedBusiness?.id === audited.id) {
+          setSelectedBusiness(audited);
+        }
+
+        // Also sync with saved leads in state and database if this lead is already saved
+        setSavedLeads((prev) =>
+          prev.map((l) => {
+            if (l.business_id === audited.id) {
+              const updatedLead: SavedLead = {
+                ...l,
+                audit_score: audited.audit?.score ?? l.audit_score,
+                design_score: audited.audit?.ai_critique?.design_score ?? l.design_score,
+                audit: audited.audit || l.audit,
+              };
+              // Async sync to server
+              fetch('/api/leads/saved', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lead: updatedLead }),
+              }).catch(() => {});
+              return updatedLead;
+            }
+            return l;
+          })
+        );
+
+        try {
+          confetti({
+            particleCount: 40,
+            spread: 50,
+            origin: { y: 0.7 },
+          });
+        } catch (e) {}
+      }
+    } catch (err: any) {
+      console.error('Single audit error:', err);
+    } finally {
+      setAuditingLeadId(null);
+    }
+  };
+
+  const handleCustomSingleAudit = async (business: Business) => {
+    // Add custom lead to businesses list
+    setBusinesses((prev) => [business, ...prev.filter((b) => b.id !== business.id)]);
+    // Select and open in inspector modal
+    setSelectedBusiness(business);
+    // Run the audit
+    await handleAuditSingleLead(business);
   };
 
   const handleSaveToCrm = async (businessesToSave: Business[]) => {
@@ -362,6 +430,7 @@ export default function HomePage() {
             isAuditing={isAuditing}
             auditProgress={auditProgress}
             leadCount={businesses.length}
+            onOpenSingleAuditModal={() => setIsSingleAuditModalOpen(true)}
           />
 
           {/* 3. Main Workspace: Map (Left/Center) + Split Results Drawer (Right) */}
@@ -386,6 +455,8 @@ export default function HomePage() {
               isExporting={isExporting}
               onSaveToCrm={handleSaveToCrm}
               savedBusinessIds={savedBusinessIds}
+              onAuditSingleLead={handleAuditSingleLead}
+              auditingLeadId={auditingLeadId}
             />
           </main>
         </>
@@ -408,6 +479,8 @@ export default function HomePage() {
         <AuditDetailModal
           business={selectedBusiness}
           onClose={() => setSelectedBusiness(null)}
+          onReAudit={handleAuditSingleLead}
+          isReAuditing={auditingLeadId === selectedBusiness?.id}
         />
       )}
 
@@ -415,6 +488,14 @@ export default function HomePage() {
       <ConfigModal
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
+      />
+
+      {/* 6. Single Audit Target Modal */}
+      <SingleAuditModal
+        isOpen={isSingleAuditModalOpen}
+        onClose={() => setIsSingleAuditModalOpen(false)}
+        onAuditSingle={handleCustomSingleAudit}
+        isAuditing={Boolean(auditingLeadId)}
       />
     </div>
   );
