@@ -546,6 +546,7 @@ export default function HomePage() {
                 onSelectBusiness={(b) => setSelectedBusiness(b)}
                 bounds={bounds}
                 onBoundsChange={setBounds}
+                theme={theme}
               />
             </div>
 

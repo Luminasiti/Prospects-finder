@@ -10,6 +10,7 @@ interface MapComponentProps {
   onSelectBusiness: (business: Business) => void;
   bounds: SearchBounds;
   onBoundsChange: (bounds: SearchBounds) => void;
+  theme?: 'dark' | 'light';
 }
 
 // Generate custom Neubrutalism SVG icon based on audit grade
@@ -68,6 +69,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   onSelectBusiness,
   bounds,
   onBoundsChange,
+  theme = 'dark',
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -97,11 +99,10 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }
     ).addTo(map);
@@ -271,7 +272,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   }, [businesses, selectedBusinessId]);
 
   return (
-    <div className="relative w-full h-full min-h-[400px]">
+    <div className={`relative w-full h-full min-h-[400px] ${theme === 'dark' ? 'map-dark-tiles' : ''}`}>
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Map Legend */}
