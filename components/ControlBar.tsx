@@ -27,6 +27,8 @@ interface ControlBarProps {
   leadCount: number;
   onOpenSingleAuditModal?: () => void;
   theme?: 'dark' | 'light';
+  resultsLimit?: number;
+  onResultsLimitChange?: (limit: number) => void;
 }
 
 const QUICK_CATEGORIES = [
@@ -53,6 +55,8 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   leadCount,
   onOpenSingleAuditModal,
   theme = 'dark',
+  resultsLimit = 20,
+  onResultsLimitChange,
 }) => {
   const isLight = theme === 'light';
   const isRadius = bounds.type === 'radius';
@@ -175,7 +179,24 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         )}
 
         {/* Primary Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Results Limit Selector */}
+          <div className="flex items-center gap-1.5 bg-white border-2 border-black px-2.5 py-1.5 rounded-xl text-xs font-bold text-black shadow-[2.5px_2.5px_0px_0px_#000]">
+            <span className="text-[11px] font-black uppercase text-slate-600">Limit:</span>
+            <select
+              value={resultsLimit}
+              onChange={(e) => onResultsLimitChange?.(Number(e.target.value))}
+              disabled={isSearching || isAuditing}
+              className="bg-transparent font-black text-xs text-black focus:outline-none cursor-pointer pr-1"
+              title="Select how many leads to discover"
+            >
+              <option value={15}>15 Leads</option>
+              <option value={20}>20 Leads</option>
+              <option value={40}>40 Leads</option>
+              <option value={60}>60 Leads</option>
+            </select>
+          </div>
+
           {/* Discover Leads in Zone */}
           <button
             onClick={onFindLeads}

@@ -49,7 +49,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 // Generate realistic simulated leads if API is offline or returns empty
-function generateSimulatedLeads(category: string, bounds: SearchBounds): Business[] {
+function generateSimulatedLeads(category: string, bounds: SearchBounds, count: number = 20): Business[] {
   let centerLat = 45.5855;
   let centerLng = 10.6500;
   let radiusMeters = 5000;
@@ -91,7 +91,6 @@ function generateSimulatedLeads(category: string, bounds: SearchBounds): Busines
   const key = Object.keys(categoryLabels).find(k => category.toLowerCase().includes(k)) || 'default';
   const data = categoryLabels[key];
 
-  const count = 10 + Math.floor(Math.random() * 6);
   const results: Business[] = [];
 
   const demoUrls = [
@@ -165,7 +164,7 @@ function generateSimulatedLeads(category: string, bounds: SearchBounds): Busines
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { category, bounds } = body as { category: string; bounds: SearchBounds };
+    const { category, bounds, limit = 20 } = body as { category: string; bounds: SearchBounds; limit?: number };
 
     if (!category || !bounds) {
       return NextResponse.json(
@@ -174,6 +173,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const targetLimit = Math.min(Math.max(Number(limit) || 20, 5), 60);
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     let businesses: Business[] = [];
     let dataSource = 'simulator';
@@ -195,43 +195,72 @@ export async function POST(req: NextRequest) {
           radius = calc.radius;
         }
 
-        // Use Google Places API (New) Text Search / Nearby Search
+        // Use Google Places API (New) Text Search with pagination
         const newPlacesUrl = 'https://places.googleapis.com/v1/places:searchText';
-        const response = await fetch(newPlacesUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': apiKey,
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.location',
-          },
-          body: JSON.stringify({
+        let pageToken: string | undefined = undefined;
+        const seenPlaceIds = new Set<string>();
+
+        while (businesses.length < targetLimit) {
+          const fetchCount = Math.min(20, targetLimit - businesses.length);
+          const reqBody: any = {
             textQuery: `${category}`,
-            maxResultCount: 15,
+            maxResultCount: fetchCount,
             locationBias: {
               circle: {
                 center: { latitude: centerLat, longitude: centerLng },
                 radius: Math.min(radius, 50000),
               },
             },
-          }),
-          signal: AbortSignal.timeout(9000),
-        });
+          };
 
-        const data = await response.json();
+          if (pageToken) {
+            reqBody.pageToken = pageToken;
+          }
 
-        if (data.places && Array.isArray(data.places) && data.places.length > 0) {
-          dataSource = 'google_places';
-          businesses = data.places.map((place: any) => ({
-            id: crypto.randomUUID(),
-            place_id: place.id,
-            name: place.displayName?.text || 'Business Name',
-            address: place.formattedAddress || 'Local Address',
-            phone: place.nationalPhoneNumber || place.internationalPhoneNumber || 'No phone listed',
-            website_url: place.websiteUri || null,
-            latitude: place.location?.latitude || centerLat,
-            longitude: place.location?.longitude || centerLng,
-            status: 'pending_audit' as const,
-          }));
+          const response = await fetch(newPlacesUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.location,nextPageToken',
+            },
+            body: JSON.stringify(reqBody),
+            signal: AbortSignal.timeout(9000),
+          });
+
+          const data = await response.json();
+
+          if (data.places && Array.isArray(data.places) && data.places.length > 0) {
+            dataSource = 'google_places';
+            for (const place of data.places) {
+              if (place.id && seenPlaceIds.has(place.id)) continue;
+              if (place.id) seenPlaceIds.add(place.id);
+
+              businesses.push({
+                id: crypto.randomUUID(),
+                place_id: place.id,
+                name: place.displayName?.text || 'Business Name',
+                address: place.formattedAddress || 'Local Address',
+                phone: place.nationalPhoneNumber || place.internationalPhoneNumber || 'No phone listed',
+                website_url: place.websiteUri || null,
+                latitude: place.location?.latitude || centerLat,
+                longitude: place.location?.longitude || centerLng,
+                status: 'pending_audit' as const,
+              });
+
+              if (businesses.length >= targetLimit) break;
+            }
+          } else {
+            break;
+          }
+
+          if (!data.nextPageToken || businesses.length >= targetLimit) {
+            break;
+          }
+
+          pageToken = data.nextPageToken;
+          // Google Places API token requires a brief moment before becoming valid
+          await new Promise((resolve) => setTimeout(resolve, 800));
         }
       } catch (googleError) {
         console.warn('Google Places API (New) query failed, falling back to simulator:', googleError);
@@ -240,7 +269,7 @@ export async function POST(req: NextRequest) {
 
     // Fallback if Google API wasn't configured or returned 0 results
     if (businesses.length === 0) {
-      businesses = generateSimulatedLeads(category, bounds);
+      businesses = generateSimulatedLeads(category, bounds, targetLimit);
     }
 
     // Persist to Supabase if configured

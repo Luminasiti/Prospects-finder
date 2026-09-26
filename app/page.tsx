@@ -59,6 +59,7 @@ export default function HomePage() {
   const [isSingleAuditModalOpen, setIsSingleAuditModalOpen] = useState(false);
   const [auditingLeadId, setAuditingLeadId] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [resultsLimit, setResultsLimit] = useState<number>(20);
 
   // Load theme from localStorage
   useEffect(() => {
@@ -167,13 +168,14 @@ export default function HomePage() {
     }
   };
 
-  const handleFindLeads = async () => {
+  const handleFindLeads = async (customLimit?: number) => {
     try {
       setIsSearching(true);
+      const effectiveLimit = customLimit || resultsLimit;
       const res = await fetch('/api/leads/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, bounds }),
+        body: JSON.stringify({ category, bounds, limit: effectiveLimit }),
       });
 
       if (!res.ok) {
@@ -535,6 +537,11 @@ export default function HomePage() {
             leadCount={businesses.length}
             onOpenSingleAuditModal={() => setIsSingleAuditModalOpen(true)}
             theme={theme}
+            resultsLimit={resultsLimit}
+            onResultsLimitChange={(newLimit) => {
+              setResultsLimit(newLimit);
+              handleFindLeads(newLimit);
+            }}
           />
 
           {/* 3. Main Workspace: Map (Left/Center) + Split Results Drawer (Right) */}
