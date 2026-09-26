@@ -607,10 +607,10 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
           /* ========================================================= */
           /* TABLE VIEW: CLEAN, DENSE & STREAMLINED                    */
           /* ========================================================= */
-          <div className={`border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_#000] overflow-hidden ${
+          <div className={`border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_#000] overflow-hidden min-h-[420px] ${
             isLight ? 'bg-white' : 'bg-slate-900'
           }`}>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto min-h-[420px] pb-32">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className={`border-b-2 border-black text-[11px] font-black uppercase tracking-wider ${
@@ -634,7 +634,7 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y-2 divide-black/20">
-                  {filteredLeads.map((lead) => {
+                  {filteredLeads.map((lead, index) => {
                     const isSelected = selectedIds.has(lead.id);
                     const statusConfig = STATUS_CONFIG[lead.outreach_status] || STATUS_CONFIG.not_contacted;
                     const domain = getCleanDomain(lead.website_url);
@@ -725,21 +725,31 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
 
                             {/* Dropdown Menu to change list */}
                             {activeChangeListLeadId === lead.id && (
-                              <div className="absolute left-0 top-full mt-1.5 z-30 w-44 bg-white text-black border-2 border-black rounded-xl p-1.5 shadow-[4px_4px_0px_0px_#000]">
-                                <p className="text-[10px] font-black uppercase text-slate-500 px-2 py-1">Move to List:</p>
-                                {availableLists.map(l => (
-                                  <button
-                                    key={l}
-                                    onClick={() => handleListChange(lead, l)}
-                                    className={`w-full text-left px-2 py-1 rounded-lg text-xs font-bold hover:bg-[#FFE600] flex items-center justify-between ${
-                                      (lead.list_name || 'General Leads') === l ? 'bg-slate-100 font-black' : ''
-                                    }`}
-                                  >
-                                    <span className="truncate">{l}</span>
-                                    {(lead.list_name || 'General Leads') === l && <Check className="w-3 h-3 stroke-[3]" />}
-                                  </button>
-                                ))}
-                              </div>
+                              <>
+                                <div
+                                  className="fixed inset-0 z-30 bg-transparent"
+                                  onClick={() => setActiveChangeListLeadId(null)}
+                                />
+                                <div className={`absolute left-0 ${
+                                  index > 0 && index >= filteredLeads.length - 2 && filteredLeads.length > 2
+                                    ? 'bottom-full mb-1.5'
+                                    : 'top-full mt-1.5'
+                                } z-40 w-48 bg-white text-black border-2 border-black rounded-xl p-1.5 shadow-[4px_4px_0px_0px_#000]`}>
+                                  <p className="text-[10px] font-black uppercase text-slate-500 px-2 py-1">Move to List:</p>
+                                  {availableLists.map(l => (
+                                    <button
+                                      key={l}
+                                      onClick={() => handleListChange(lead, l)}
+                                      className={`w-full text-left px-2 py-1 rounded-lg text-xs font-bold hover:bg-[#FFE600] flex items-center justify-between ${
+                                        (lead.list_name || 'General Leads') === l ? 'bg-slate-100 font-black' : ''
+                                      }`}
+                                    >
+                                      <span className="truncate">{l}</span>
+                                      {(lead.list_name || 'General Leads') === l && <Check className="w-3 h-3 stroke-[3]" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
                             )}
                           </div>
                         </td>
@@ -817,35 +827,45 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
 
                             {/* Date Picker Popover */}
                             {activeFollowUpLeadId === lead.id && (
-                              <div className="absolute left-0 top-full mt-1.5 z-30 p-2.5 bg-white text-black border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_#000] w-48">
-                                <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Set Date:</p>
-                                <input
-                                  type="date"
-                                  value={lead.follow_up_date || ''}
-                                  onChange={(e) => handleDateChange(lead, e.target.value)}
-                                  className="w-full bg-slate-100 border border-black rounded-lg px-2 py-1 text-xs font-bold mb-2 text-black"
+                              <>
+                                <div
+                                  className="fixed inset-0 z-30 bg-transparent"
+                                  onClick={() => setActiveFollowUpLeadId(null)}
                                 />
-                                <div className="grid grid-cols-3 gap-1">
-                                  <button
-                                    onClick={() => setQuickFollowUp(lead, 1)}
-                                    className="neo-btn bg-[#FFE600] text-black text-[10px] font-black py-0.5"
-                                  >
-                                    +1d
-                                  </button>
-                                  <button
-                                    onClick={() => setQuickFollowUp(lead, 3)}
-                                    className="neo-btn bg-[#38BDF8] text-black text-[10px] font-black py-0.5"
-                                  >
-                                    +3d
-                                  </button>
-                                  <button
-                                    onClick={() => setQuickFollowUp(lead, 7)}
-                                    className="neo-btn bg-[#C084FC] text-black text-[10px] font-black py-0.5"
-                                  >
-                                    +1w
-                                  </button>
+                                <div className={`absolute left-0 ${
+                                  index > 0 && index >= filteredLeads.length - 2 && filteredLeads.length > 2
+                                    ? 'bottom-full mb-1.5'
+                                    : 'top-full mt-1.5'
+                                } z-40 p-2.5 bg-white text-black border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_#000] w-48`}>
+                                  <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Set Date:</p>
+                                  <input
+                                    type="date"
+                                    value={lead.follow_up_date || ''}
+                                    onChange={(e) => handleDateChange(lead, e.target.value)}
+                                    className="w-full bg-slate-100 border border-black rounded-lg px-2 py-1 text-xs font-bold mb-2 text-black"
+                                  />
+                                  <div className="grid grid-cols-3 gap-1">
+                                    <button
+                                      onClick={() => setQuickFollowUp(lead, 1)}
+                                      className="neo-btn bg-[#FFE600] text-black text-[10px] font-black py-0.5"
+                                    >
+                                      +1d
+                                    </button>
+                                    <button
+                                      onClick={() => setQuickFollowUp(lead, 3)}
+                                      className="neo-btn bg-[#38BDF8] text-black text-[10px] font-black py-0.5"
+                                    >
+                                      +3d
+                                    </button>
+                                    <button
+                                      onClick={() => setQuickFollowUp(lead, 7)}
+                                      className="neo-btn bg-[#C084FC] text-black text-[10px] font-black py-0.5"
+                                    >
+                                      +1w
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
+                              </>
                             )}
                           </div>
                         </td>
@@ -870,27 +890,37 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
 
                             {/* Notes Editor Popover */}
                             {activeNotesLeadId === lead.id && (
-                              <div className="absolute right-0 top-full mt-1.5 z-30 p-3 bg-white text-black border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_#000] w-72">
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-[11px] font-black uppercase text-slate-700">Outreach Notes</span>
-                                  <button onClick={() => setActiveNotesLeadId(null)} className="p-0.5">
-                                    <X className="w-3.5 h-3.5" />
+                              <>
+                                <div
+                                  className="fixed inset-0 z-30 bg-transparent"
+                                  onClick={() => setActiveNotesLeadId(null)}
+                                />
+                                <div className={`absolute right-0 ${
+                                  index > 0 && index >= filteredLeads.length - 2 && filteredLeads.length > 2
+                                    ? 'bottom-full mb-1.5'
+                                    : 'top-full mt-1.5'
+                                } z-40 p-3 bg-white text-black border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_#000] w-72`}>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[11px] font-black uppercase text-slate-700">Outreach Notes</span>
+                                    <button onClick={() => setActiveNotesLeadId(null)} className="p-0.5">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <textarea
+                                    rows={3}
+                                    value={lead.notes || ''}
+                                    onChange={(e) => handleNotesChange(lead, e.target.value)}
+                                    placeholder="e.g. Sent redesign pitch, spoke to manager..."
+                                    className="w-full bg-slate-50 border-2 border-black rounded-xl p-2 text-xs font-bold text-black placeholder-slate-400 focus:outline-none focus:shadow-[2px_2px_0px_0px_#000] mb-2"
+                                  />
+                                  <button
+                                    onClick={() => setActiveNotesLeadId(null)}
+                                    className="w-full neo-btn bg-[#FFE600] text-black text-xs font-black py-1"
+                                  >
+                                    Done
                                   </button>
                                 </div>
-                                <textarea
-                                  rows={3}
-                                  value={lead.notes || ''}
-                                  onChange={(e) => handleNotesChange(lead, e.target.value)}
-                                  placeholder="e.g. Sent redesign pitch, spoke to manager..."
-                                  className="w-full bg-slate-50 border-2 border-black rounded-xl p-2 text-xs font-bold text-black placeholder-slate-400 focus:outline-none focus:shadow-[2px_2px_0px_0px_#000] mb-2"
-                                />
-                                <button
-                                  onClick={() => setActiveNotesLeadId(null)}
-                                  className="w-full neo-btn bg-[#FFE600] text-black text-xs font-black py-1"
-                                >
-                                  Done
-                                </button>
-                              </div>
+                              </>
                             )}
                           </div>
                         </td>
