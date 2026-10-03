@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { Audit, Business, AiCritique } from '@/lib/types';
+import { enrichBusinessContacts } from '@/lib/enrichment';
 import crypto from 'crypto';
 
 interface AuditRequestItem {
@@ -20,6 +21,33 @@ async function auditSingleWebsite(
 
   // Edge case: No website provided
   if (!business.website_url || business.website_url.trim() === '') {
+    const email_pitch = `Oggetto: ${business.name}: La presenza digitale che manca per conquistare nuovi clienti
+
+Gentile Team di ${business.name},
+
+mentre analizzavo le attività del settore ${business.category || 'Servizi'} nella vostra zona, ho notato che la vostra impresa non dispone ancora di un sito web ufficiale dedicato.
+
+Oggi oltre il 90% delle persone cerca su Google e consulta lo smartphone prima di effettuare una chiamata o una visita. Senza un sito web attivo, tutti questi potenziali clienti scelgono automaticamente i concorrenti.
+
+Per questo motivo, abbiamo GIÀ creato un prototipo interattivo e moderno del vostro nuovo sito web: è ultra-veloce, responsive e studiato per farvi ricevere contatti diretti ogni giorno.
+
+Avreste 10 minuti questa settimana per dargli un'occhiata insieme senza alcun impegno?
+Potete prenotare una breve chiamata qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+Un cordiale saluto,
+Il Team di Luminasiti`;
+
+    const linkedin_pitch = `Buongiorno [Nome],
+
+ho notato che ${business.name} non ha ancora un sito web ufficiale, e questo fa sì che molti clienti cerchino altrove.
+
+Abbiamo GIÀ sviluppato un prototipo moderno, veloce e mobile-first del vostro nuovo sito web. 
+
+Avreste 10 minuti per vederlo insieme senza impegno?
+Potete prenotare uno slot qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+A presto!`;
+
     return {
       id: auditId,
       business_id: business.id,
@@ -30,15 +58,17 @@ async function auditSingleWebsite(
       seo_score: null,
       accessibility_score: null,
       lcp_ms: null,
-      issues_list: ['No website found / Missing digital presence'],
+      issues_list: ['Nessun sito web trovato / Presenza digitale assente'],
       ai_critique: {
         design_score: 0,
         era: 'Non-Existent',
         visual_hierarchy_rating: 'Poor',
-        color_contrast_feedback: 'No digital footprint found.',
-        cro_feedback: 'Zero online visibility. All local search traffic is lost to competitors with websites.',
-        flaws: ['No registered website found for this business listing'],
-        redesign_pitch: `Hi ${business.name} team, noticed you don't currently have a dedicated website for your business. Most local customers search on Google before calling—we can build you a sleek, high-converting website this week. Want to see a preview?`,
+        color_contrast_feedback: 'Nessun asset web rilevato.',
+        cro_feedback: 'Assenza totale di visibilità online. Il traffico locale va ai concorrenti.',
+        flaws: ['Nessun sito web registrato per questa attività'],
+        redesign_pitch: email_pitch,
+        email_pitch,
+        linkedin_pitch,
       },
     };
   }
@@ -255,17 +285,94 @@ async function auditSingleWebsite(
     }
 
     const designFlaws = [...issues.slice(0, 3)];
-    if (!hasCta) designFlaws.push('Missing clear above-the-fold Call-To-Action button');
-    if (!hasReviews) designFlaws.push('Lacks customer reviews / social proof');
+    if (!hasCta) designFlaws.push('Assenza di un pulsante Call-To-Action rapido per chiamare o prenotare');
+    if (!hasReviews) designFlaws.push('Mancanza di recensioni e riprova sociale');
+
+    const cleanFlaws = designFlaws.length > 0 ? designFlaws : ['Layout mobile e velocità di caricamento non ottimizzati'];
+    let email_pitch = `Oggetto: ${business.name}: Quel dettaglio sul vostro sito che allontana i clienti
+
+Gentile Team di ${business.name},
+
+analizzando la presenza digitale nel vostro settore, ho notato che il vostro sito presenta un problema critico: ${cleanFlaws[0]}.
+
+Oggi la maggior parte dei clienti cerca e prenota da smartphone: un sito con problemi di lentezza o grafica datata spinge gli utenti a uscire e rivolgersi ai concorrenti.
+
+Per questo motivo, per farvi toccare con mano la differenza, abbiamo GIÀ sviluppato un prototipo del vostro nuovo sito web. È ultra-veloce, moderno e progettato per massimizzare contatti e prenotazioni.
+
+Avreste 10 minuti nei prossimi giorni per vederlo insieme senza impegno?
+Potete prenotare una breve chiamata qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+Un cordiale saluto,
+Il Team di Luminasiti`;
+
+    let linkedin_pitch = `Buongiorno [Nome],
+
+visitando il sito di ${business.name} ho notato che alcuni aspetti tecnici (${cleanFlaws[0]}) stanno frenando l'acquisizione di nuovi clienti.
+
+Abbiamo GIÀ realizzato un prototipo moderno e ultra-veloce del vostro nuovo sito web, studiato per risolvere ogni problema di design e velocità.
+
+Avreste 10 minuti per dare un'occhiata insieme senza impegno?
+Potete scegliere l'orario qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+Un saluto cordiale!`;
+
+    if (geminiKey && geminiKey.trim().length > 10) {
+      try {
+        const prompt = `Sei un copywriter B2B di livello mondiale. Genera in LINGUA ITALIANA 2 pitch (email e linkedin) per riproporre il sito a questo prospect:
+Azienda: "${business.name}"
+Settore: "${business.category || 'Servizi'}"
+Problemi tecnici: ${cleanFlaws.join(', ')}
+
+Requisiti:
+1. Spiega i punti deboli reali per il loro settore.
+2. Dichiara chiaramente che abbiamo GIÀ creato un prototipo del nuovo sito moderno e ultra-veloce che risolve tutti i problemi di velocità e design.
+3. Chiedi 10 minuti per vederlo insieme e metti il placeholder: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY].
+
+Restituisci SOLO un JSON:
+{
+  "email_pitch": "testo email con Oggetto e Corpo",
+  "linkedin_pitch": "messaggio LinkedIn conciso ed efficace"
+}`;
+
+        for (const model of ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest']) {
+          try {
+            const aiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { responseMimeType: 'application/json' },
+                }),
+                signal: AbortSignal.timeout(6000),
+              }
+            );
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              const text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                const parsed = JSON.parse(text);
+                if (parsed.email_pitch) email_pitch = parsed.email_pitch;
+                if (parsed.linkedin_pitch) linkedin_pitch = parsed.linkedin_pitch;
+                break;
+              }
+            }
+          } catch {}
+        }
+      } catch {}
+    }
 
     aiCritique = {
       design_score: designScore,
       era,
       visual_hierarchy_rating: visualHierarchy,
-      color_contrast_feedback: designScore < 50 ? 'Low contrast between text and background' : 'Well-balanced contrast and readable typography',
-      cro_feedback: !hasCta ? 'Critical: No instant booking or call CTA in view' : 'Clear conversion funnel present',
-      flaws: designFlaws,
-      redesign_pitch: `Hi ${business.name} team, while looking over local businesses in your area, I noticed your website has a few issues that are likely hurting your customer conversions—specifically ${designFlaws[0] || 'mobile layout issues'}. With a modern responsive redesign, you could capture significantly more inquiries from mobile visitors. Would you be open to seeing a 2-minute redesign concept?`,
+      color_contrast_feedback: designScore < 50 ? 'Contrasto basso tra testo e sfondo' : 'Contrasto equilibrato e tipografia leggibile',
+      cro_feedback: !hasCta ? 'Critico: Nessuna call-to-action visibile subito' : 'Imbuto di conversione presente',
+      flaws: cleanFlaws,
+      redesign_pitch: email_pitch,
+      email_pitch,
+      linkedin_pitch,
     };
   } catch (aiErr) {
     console.warn('AI critique generation error:', aiErr);
@@ -301,28 +408,56 @@ export async function POST(req: NextRequest) {
     const pageSpeedKey = process.env.PAGESPEED_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
 
-    // Process all businesses concurrently with bounded batching
-    const auditPromises = businesses.map(b =>
-      auditSingleWebsite(
+    // Process all businesses concurrently: Audit + Contact Enrichment
+    const auditPromises = businesses.map(async (b) => {
+      const audit = await auditSingleWebsite(
         {
           id: b.id,
           name: b.name,
           website_url: b.website_url,
-          category: 'Local Service',
+          category: 'Servizio Locale',
         },
         pageSpeedKey,
         geminiKey
-      )
-    );
+      );
 
-    const audits = await Promise.all(auditPromises);
+      let enrichment = {
+        emails: b.emails || [],
+        linkedin_company_url: b.linkedin_company_url || null,
+        linkedin_profiles: b.linkedin_profiles || [],
+      };
 
-    // Map audits back to businesses
-    const updatedBusinesses: Business[] = businesses.map(b => {
-      const audit = audits.find(a => a.business_id === b.id);
+      try {
+        const enriched = await enrichBusinessContacts({
+          name: b.name,
+          website_url: b.website_url,
+          address: b.address,
+          phone: b.phone,
+        });
+        enrichment = enriched;
+      } catch (enrichErr) {
+        console.warn('Enrichment failed for business:', b.name, enrichErr);
+      }
+
+      return {
+        audit,
+        enrichment,
+      };
+    });
+
+    const results = await Promise.all(auditPromises);
+
+    const audits = results.map(r => r.audit);
+
+    // Map audits & enrichments back to businesses
+    const updatedBusinesses: Business[] = businesses.map((b, idx) => {
+      const res = results[idx];
       return {
         ...b,
-        audit,
+        audit: res.audit,
+        emails: res.enrichment.emails,
+        linkedin_company_url: res.enrichment.linkedin_company_url,
+        linkedin_profiles: res.enrichment.linkedin_profiles,
         status: 'audited' as const,
       };
     });
@@ -331,18 +466,18 @@ export async function POST(req: NextRequest) {
     const supabaseAdmin = getSupabaseAdmin();
     if (supabaseAdmin) {
       try {
-        const auditRows = audits.map(a => ({
-          id: a.id,
-          business_id: a.business_id,
-          score: a.score,
-          has_ssl: a.has_ssl,
-          http_status: a.http_status,
-          mobile_score: a.mobile_score,
-          seo_score: a.seo_score,
-          accessibility_score: a.accessibility_score,
-          lcp_ms: a.lcp_ms,
-          issues_list: a.issues_list,
-          ai_critique: a.ai_critique,
+        const auditRows = results.map(r => ({
+          id: r.audit.id,
+          business_id: r.audit.business_id,
+          score: r.audit.score,
+          has_ssl: r.audit.has_ssl,
+          http_status: r.audit.http_status,
+          mobile_score: r.audit.mobile_score,
+          seo_score: r.audit.seo_score,
+          accessibility_score: r.audit.accessibility_score,
+          lcp_ms: r.audit.lcp_ms,
+          issues_list: r.audit.issues_list,
+          ai_critique: r.audit.ai_critique,
         }));
 
         await supabaseAdmin.from('audits').insert(auditRows);

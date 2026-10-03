@@ -5,6 +5,13 @@ export interface SearchBounds {
   polygon?: { lat: number; lng: number }[];
 }
 
+export interface PersonProfile {
+  name: string;
+  role?: string;
+  linkedin_url?: string;
+  linkedin_search_url?: string;
+}
+
 export interface Business {
   id: string;
   scan_id?: string;
@@ -17,6 +24,9 @@ export interface Business {
   longitude: number;
   audit?: Audit;
   status?: 'pending_audit' | 'auditing' | 'audited' | 'failed';
+  emails?: string[];
+  linkedin_company_url?: string | null;
+  linkedin_profiles?: PersonProfile[];
 }
 
 export interface AiCritique {
@@ -27,6 +37,8 @@ export interface AiCritique {
   cro_feedback: string; // conversion rate optimization notes
   flaws: string[];
   redesign_pitch: string; // Cold pitch snippet tailored to owner
+  email_pitch?: string; // Italian cold email outreach pitch
+  linkedin_pitch?: string; // Italian LinkedIn outreach pitch
 }
 
 export interface Audit {
@@ -76,8 +88,11 @@ export interface SavedLead {
   list_name?: string; // Name of the list the lead belongs to (e.g., 'Default', 'High Priority', etc.)
   follow_up_date?: string | null;
   notes?: string;
-  custom_fields: Record<string, string>;
+  custom_fields: Record<string, any>;
   saved_at: string;
   updated_at?: string;
   audit?: Audit;
+  emails?: string[];
+  linkedin_company_url?: string | null;
+  linkedin_profiles?: PersonProfile[];
 }

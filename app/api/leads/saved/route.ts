@@ -38,6 +38,9 @@ export async function GET() {
       saved_at: row.saved_at || row.created_at,
       updated_at: row.updated_at,
       audit: row.audit_data || undefined,
+      emails: (row.emails || row.custom_fields?.emails || []) as string[],
+      linkedin_company_url: (row.linkedin_company_url || row.custom_fields?.linkedin_company_url || null) as string | null,
+      linkedin_profiles: (row.linkedin_profiles || row.custom_fields?.linkedin_profiles || []) as any[],
     }));
 
     return NextResponse.json({ leads, source: 'supabase' });
@@ -64,10 +67,16 @@ export async function POST(req: NextRequest) {
       id: l.id || crypto.randomUUID(),
       outreach_status: l.outreach_status || 'not_contacted',
       list_name: l.list_name || l.custom_fields?.list_name || 'General Leads',
+      emails: (l.emails || l.custom_fields?.emails || []) as string[],
+      linkedin_company_url: (l.linkedin_company_url || l.custom_fields?.linkedin_company_url || null) as string | null,
+      linkedin_profiles: (l.linkedin_profiles || l.custom_fields?.linkedin_profiles || []) as any[],
       notes: l.notes || '',
       custom_fields: {
         ...(l.custom_fields || {}),
         list_name: l.list_name || l.custom_fields?.list_name || 'General Leads',
+        emails: l.emails || l.custom_fields?.emails || [],
+        linkedin_company_url: l.linkedin_company_url || l.custom_fields?.linkedin_company_url || null,
+        linkedin_profiles: l.linkedin_profiles || l.custom_fields?.linkedin_profiles || [],
       },
       saved_at: l.saved_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),

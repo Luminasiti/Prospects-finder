@@ -45,45 +45,82 @@ function extractDomFeatures(html: string) {
   };
 }
 
-// Fallback heuristic evaluator if Gemini / OpenAI key is not provided
-function generateHeuristicCritique(businessName: string, category: string, features: ReturnType<typeof extractDomFeatures>): AiCritique {
+function generateItalianPitches(businessName: string, category: string, flaws: string[]) {
+  const mainFlaw = flaws[0] || 'lentezza nei caricamenti da smartphone e grafica non ottimizzata per i dispositivi mobili';
+  
+  const email_pitch = `Oggetto: ${businessName}: Quel dettaglio sul vostro sito che sta allontanando i clienti
+
+Gentile Team di ${businessName},
+
+analizzando la presenza digitale delle migliori realtà nel settore ${category}, ho notato che il vostro attuale sito web presenta alcuni colli di bottiglia critici: nello specifico ${mainFlaw}.
+
+Nel vostro settore, la maggior parte delle persone cerca e decide direttamente da smartphone in meno di 5 secondi: se il sito è lento, datato o difficile da navigare, gli utenti escono immediatamente e contattano il concorrente più vicino.
+
+Per questo motivo, per dimostrarvi concretamente cosa è possibile fare, abbiamo GIÀ realizzato un prototipo moderno del nuovo sito web per ${businessName}. È ultra-veloce (caricamento sotto il secondo), sicuro, curato in ogni dettaglio grafico e progettato appositamente per trasformare i visitatori in clienti e prenotazioni dirette.
+
+Avreste 10 minuti questa settimana per dare un'occhiata all'anteprima che abbiamo creato per voi?
+
+Potete scegliere comodamente data e ora per una breve videochiamata senza impegno qui:
+[LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+Un cordiale saluto,
+Il Team di Luminasiti`;
+
+  const linkedin_pitch = `Buongiorno [Nome],
+
+visitando il sito di ${businessName} ho notato che alcuni aspetti tecnici—in particolare ${mainFlaw}—stanno rallentando l'acquisizione di nuovi contatti per il vostro settore ${category}.
+
+Abbiamo preso l'iniziativa: abbiamo GIÀ creato un'anteprima/prototipo del vostro nuovo sito web, moderno, ultra-veloce e progettato appositamente per risolvere ogni problema di design e velocità.
+
+Avreste 10 minuti questa settimana per vederlo insieme senza alcun impegno?
+Potete fissare un momento comodo qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+Un saluto cordiale!`;
+
+  return { email_pitch, linkedin_pitch };
+}
+
+function generateHeuristicCritique(
+  businessName: string,
+  category: string,
+  features: ReturnType<typeof extractDomFeatures>
+): AiCritique {
+  let designScore = 80;
   const flaws: string[] = [];
-  let designScore = 78;
 
   if (!features.hasViewport) {
     designScore -= 25;
-    flaws.push('Non-responsive layout: Missing viewport meta tag causes tiny, unreadable text on mobile screens.');
+    flaws.push('Manca la viewport mobile (il sito non è responsive su smartphone).');
   }
 
   if (features.h1Count === 0) {
-    designScore -= 12;
-    flaws.push('Lacks clear primary visual headline (no <h1> tag); visitors cannot immediately understand the value proposition.');
+    designScore -= 10;
+    flaws.push('Manca un titolo principale <h1> chiaro per spiegare subito la proposta di valore.');
   } else if (features.h1Count > 2) {
     designScore -= 8;
-    flaws.push('Multiple competing <h1> tags fragment visual hierarchy and dilute page focus.');
+    flaws.push('Troppi tag <h1> in conflitto che frammentano la gerarchia visiva.');
   }
 
   if (!features.hasCta) {
     designScore -= 18;
-    flaws.push('No prominent above-the-fold Call-To-Action (CTA) button to book, call, or request a quote.');
+    flaws.push('Assenza di pulsanti Call-To-Action (CTA) evidenti per chiamare o prenotare al volo.');
   }
 
   if (features.hasTablesForLayout || features.hasInlineStyles) {
     designScore -= 15;
-    flaws.push('Outdated layout styling: Relies on rigid table layouts or heavy inline styles instead of flexible modern CSS.');
+    flaws.push('Layout datato con stili rigidi invece del moderno CSS flessibile e responsive.');
   }
 
   if (!features.hasReviews) {
     designScore -= 10;
-    flaws.push('Missing visible customer testimonials or social proof in hero and main content sections.');
+    flaws.push('Mancanza di recensioni visibili o riprova sociale nella sezione principale.');
   }
 
   if (features.imagesWithoutAlt > 2) {
     designScore -= 5;
-    flaws.push(`${features.imagesWithoutAlt} images lack descriptive alt tags, hurting accessibility and screen readers.`);
+    flaws.push(`${features.imagesWithoutAlt} immagini senza attributo alt, penalizzando accessibilità e SEO.`);
   }
 
-  // Bounds
   designScore = Math.max(18, Math.min(96, designScore));
 
   let era = 'Modern Responsive';
@@ -101,14 +138,15 @@ function generateHeuristicCritique(businessName: string, category: string, featu
   }
 
   const contrastFeedback = designScore < 55
-    ? 'Sub-optimal contrast ratios detected on primary buttons and secondary navigation elements.'
-    : 'Balanced color palette with readable contrast across body and header copy.';
+    ? 'Contrasto cromatico insufficiente tra testo e sfondo su pulsanti e navigazione.'
+    : 'Palette colori bilanciata con leggibilità ottimale dei testi.';
 
   const croFeedback = !features.hasCta
-    ? 'Critical Conversion Gap: Prospective customers have no immediate path to contact or book without hunting for a contact page.'
-    : 'Conversion funnels present, but sticky mobile tap-to-call buttons and high-contrast form fields would lift conversions by 25-40%.';
+    ? 'Falla Critica di Conversione: I visitatori non trovano un pulsante rapido per prenotare o chiamare.'
+    : 'Percorso di conversione presente ma migliorabile con pulsante sticky per smartphone.';
 
-  const pitch = `Hi ${businessName} team, I was reviewing local ${category} websites in your area and noticed your site has a few quick design and conversion leaks—specifically ${flaws[0] || 'sub-optimal mobile responsiveness'}. Updating to a modern high-converting layout with instant click-to-call could easily double your inbound client inquiries. Open to seeing a quick free mockup?`;
+  const cleanFlaws = flaws.length > 0 ? flaws : ['Necessita di ottimizzazioni per la navigazione da smartphone'];
+  const { email_pitch, linkedin_pitch } = generateItalianPitches(businessName, category, cleanFlaws);
 
   return {
     design_score: designScore,
@@ -116,8 +154,10 @@ function generateHeuristicCritique(businessName: string, category: string, featu
     visual_hierarchy_rating: visualHierarchy,
     color_contrast_feedback: contrastFeedback,
     cro_feedback: croFeedback,
-    flaws: flaws.length > 0 ? flaws : ['Minor layout polish needed for optimal mobile touch targets'],
-    redesign_pitch: pitch,
+    flaws: cleanFlaws,
+    redesign_pitch: email_pitch,
+    email_pitch,
+    linkedin_pitch,
   };
 }
 
@@ -142,16 +182,19 @@ export async function POST(req: NextRequest) {
       });
       htmlContent = await response.text();
     } catch (fetchErr) {
-      // If website unreachable, return low design score critique
+      // If website unreachable, return low design score critique in Italian
+      const { email_pitch, linkedin_pitch } = generateItalianPitches(businessName || 'Business', category || 'Servizi', ['Sito web irraggiungibile o server in timeout continuo']);
       return NextResponse.json({
         critique: {
           design_score: 15,
           era: 'Broken / Unreachable Server',
           visual_hierarchy_rating: 'Poor' as const,
-          color_contrast_feedback: 'Unable to render site assets due to server timeout or connection failure.',
-          cro_feedback: 'Site fails to load, resulting in 100% bounce rate for all visitors.',
-          flaws: ['Website timed out or refused connection', 'DNS / SSL handshake failure'],
-          redesign_pitch: `Hi ${businessName || 'there'}, your website appears to be down or timing out. Every day it remains unreachable is costing you valuable ${category || 'local'} leads. We can get a blazing fast modern site up for you immediately.`,
+          color_contrast_feedback: 'Impossibile visualizzare le risorse a causa del blocco del server.',
+          cro_feedback: 'Il sito non risponde, causando una perdita del 100% dei visitatori.',
+          flaws: ['Sito web offline o tempo di caricamento superiore a 10s', 'Mancata risposta server'],
+          redesign_pitch: email_pitch,
+          email_pitch,
+          linkedin_pitch,
         },
       });
     }
@@ -161,50 +204,65 @@ export async function POST(req: NextRequest) {
 
     if (geminiKey && geminiKey.trim().length > 10) {
       try {
-        const prompt = `You are an elite UX/UI Design Director and Conversion Rate Optimization (CRO) expert auditing a local business website.
-Business Name: "${businessName}"
-Niche/Category: "${category}"
-URL: "${url}"
-Website Title: "${features.title}"
-Meta Description: "${features.metaDesc}"
-H1 Headline: "${features.h1Text || 'None'}"
-Has Mobile Viewport: ${features.hasViewport}
-Has Clear Call-to-Action: ${features.hasCta}
-Has Customer Reviews/Social Proof: ${features.hasReviews}
-Uses Outdated Table Layout: ${features.hasTablesForLayout}
-Images Without Alt Tags: ${features.imagesWithoutAlt}
+        const prompt = `Sei un copywriter di livello mondiale e Design Director B2B specializzato in riprogettazione siti web.
+Genera una valutazione UX e DUE pitch di outreach ad altissima conversione in LINGUA ITALIANA per questo prospect:
+- Nome Azienda: "${businessName}"
+- Settore/Niche: "${category}"
+- URL: "${url}"
+- Titolo Pagina: "${features.title}"
+- Descrizione: "${features.metaDesc}"
+- Titolo H1: "${features.h1Text || 'Nessuno'}"
+- Mobile Viewport: ${features.hasViewport}
+- Call to Action presente: ${features.hasCta}
+- Recensioni visibili: ${features.hasReviews}
 
-Critique this website's design, visual hierarchy, aesthetic modernity, and conversion flow.
-Respond ONLY in valid JSON matching this exact structure:
+REQUISITI TASSATIVI PER I PITCH:
+1. Punti deboli specifici: spiega l'impatto negativo reale sul loro business (es. clienti o pazienti persi a favore dei concorrenti per colpa di lentezza, sito datato o mancata ottimizzazione mobile).
+2. Dichiara chiaramente che abbiamo GIÀ sviluppato un prototipo/anteprima del nuovo sito web moderno, ultra-veloce e mobile-first che risolve ogni problema di design e velocità.
+3. Chiedi se hanno 10 minuti per dare un'occhiata insieme e inserisci il placeholder del link di prenotazione: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY].
+4. Scrivi in un italiano perfetto, intrigante, persuasivo e professionale.
+
+Restituisci SOLO un JSON valido con questa struttura:
 {
-  "design_score": number (0 to 100),
-  "era": string (e.g. "Early 2010s Dated Template", "Modern Clean UI", "Web 2.0 Cluttered", etc.),
+  "design_score": number (0-100),
+  "era": string (es. "Early 2010s Cluttered", "Modern Clean UI", ecc.),
   "visual_hierarchy_rating": "Poor" | "Fair" | "Good" | "Excellent",
-  "color_contrast_feedback": string,
-  "cro_feedback": string,
-  "flaws": string[],
-  "redesign_pitch": string (a 2-3 sentence personalized cold email script to pitch a website redesign to the owner)
+  "color_contrast_feedback": string (in italiano),
+  "cro_feedback": string (in italiano),
+  "flaws": string[] (in italiano),
+  "email_pitch": string (testo completo email con Oggetto e Corpo ben impaginato),
+  "linkedin_pitch": string (messaggio LinkedIn diretto, intrigante e professionale),
+  "redesign_pitch": string (uguale a email_pitch)
 }`;
 
-        const aiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: 'application/json' },
-            }),
-            signal: AbortSignal.timeout(10000),
-          }
-        );
+        for (const model of ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest']) {
+          try {
+            const aiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { responseMimeType: 'application/json' },
+                }),
+                signal: AbortSignal.timeout(9000),
+              }
+            );
 
-        if (aiRes.ok) {
-          const aiData = await aiRes.json();
-          const rawText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const parsed = JSON.parse(rawText) as AiCritique;
-            return NextResponse.json({ critique: parsed, source: 'gemini' });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              const rawText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (rawText) {
+                const parsed = JSON.parse(rawText) as AiCritique;
+                if (!parsed.redesign_pitch && parsed.email_pitch) {
+                  parsed.redesign_pitch = parsed.email_pitch;
+                }
+                return NextResponse.json({ critique: parsed, source: `gemini-${model}` });
+              }
+            }
+          } catch (modelErr) {
+            // Try next model
           }
         }
       } catch (geminiErr) {
@@ -212,8 +270,8 @@ Respond ONLY in valid JSON matching this exact structure:
       }
     }
 
-    // Heuristic fallback
-    const critique = generateHeuristicCritique(businessName || 'Business', category || 'Services', features);
+    // Heuristic fallback in Italian
+    const critique = generateHeuristicCritique(businessName || 'Business', category || 'Servizi', features);
     return NextResponse.json({ critique, source: 'heuristic' });
   } catch (error: any) {
     console.error('AI Critique Error:', error);

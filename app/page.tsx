@@ -168,14 +168,15 @@ export default function HomePage() {
     }
   };
 
-  const handleFindLeads = async (customLimit?: number) => {
+  const handleFindLeads = async (customLimit?: number | unknown) => {
     try {
       setIsSearching(true);
-      const effectiveLimit = customLimit || resultsLimit;
+      const effectiveLimit = typeof customLimit === 'number' ? customLimit : resultsLimit;
+      const cleanCategory = category.trim() || 'Business';
       const res = await fetch('/api/leads/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, bounds, limit: effectiveLimit }),
+        body: JSON.stringify({ category: cleanCategory, bounds, limit: effectiveLimit }),
       });
 
       if (!res.ok) {
@@ -265,6 +266,9 @@ export default function HomePage() {
                 audit_score: audited.audit?.score ?? l.audit_score,
                 design_score: audited.audit?.ai_critique?.design_score ?? l.design_score,
                 audit: audited.audit || l.audit,
+                emails: audited.emails || l.emails,
+                linkedin_company_url: audited.linkedin_company_url || l.linkedin_company_url,
+                linkedin_profiles: audited.linkedin_profiles || l.linkedin_profiles,
               };
               // Async sync to server
               fetch('/api/leads/saved', {
@@ -312,6 +316,9 @@ export default function HomePage() {
           audit_score: b.audit?.score ?? existing.audit_score,
           design_score: b.audit?.ai_critique?.design_score ?? existing.design_score,
           audit: b.audit || existing.audit,
+          emails: b.emails || existing.emails || [],
+          linkedin_company_url: b.linkedin_company_url || existing.linkedin_company_url || null,
+          linkedin_profiles: b.linkedin_profiles || existing.linkedin_profiles || [],
           custom_fields: {
             ...(existing.custom_fields || {}),
             list_name: listName || existing.list_name || 'General Leads',
@@ -335,6 +342,9 @@ export default function HomePage() {
         custom_fields: { list_name: listName || 'General Leads' },
         saved_at: new Date().toISOString(),
         audit: b.audit,
+        emails: b.emails || [],
+        linkedin_company_url: b.linkedin_company_url || null,
+        linkedin_profiles: b.linkedin_profiles || [],
       };
     });
 
@@ -529,7 +539,7 @@ export default function HomePage() {
             onCategoryChange={setCategory}
             bounds={bounds}
             onBoundsChange={setBounds}
-            onFindLeads={handleFindLeads}
+            onFindLeads={() => handleFindLeads()}
             onRunAudit={handleRunAudit}
             isSearching={isSearching}
             isAuditing={isAuditing}

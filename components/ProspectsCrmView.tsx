@@ -33,7 +33,8 @@ import {
   CheckSquare,
   Square,
   ChevronRight,
-  UserPlus
+  UserPlus,
+  Mail
 } from 'lucide-react';
 import { AddProspectModal } from '@/components/AddProspectModal';
 
@@ -695,6 +696,32 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
                               <span className="text-[#FB7185] font-black text-[10px] uppercase">No Website</span>
                             )}
 
+                            {lead.emails && lead.emails.length > 0 && (
+                              <a
+                                href={`mailto:${lead.emails[0]}`}
+                                className="inline-flex items-center gap-1 text-[11px] text-[#00F59B] hover:underline font-bold"
+                                title={lead.emails.join(', ')}
+                              >
+                                <Mail className="w-2.5 h-2.5 stroke-[2.5]" />
+                                <span className="max-w-[140px] truncate">{lead.emails[0]}</span>
+                              </a>
+                            )}
+
+                            {lead.linkedin_company_url && (
+                              <a
+                                href={lead.linkedin_company_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-[#38BDF8] hover:underline font-bold"
+                                title="LinkedIn Azienda"
+                              >
+                                <svg className="w-2.5 h-2.5 fill-current shrink-0" viewBox="0 0 24 24">
+                                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.39 9.74v-8.37H5.07v8.37h2.78Z" />
+                                </svg>
+                                <span>LinkedIn</span>
+                              </a>
+                            )}
+
                             {lead.phone && lead.phone !== 'Not listed' && (
                               <a
                                 href={`tel:${lead.phone}`}
@@ -939,6 +966,9 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
                                   latitude: 0,
                                   longitude: 0,
                                   audit: lead.audit,
+                                  emails: lead.emails,
+                                  linkedin_company_url: lead.linkedin_company_url,
+                                  linkedin_profiles: lead.linkedin_profiles,
                                 })
                               }
                               className="neo-btn bg-white hover:bg-slate-100 text-black text-[11px] font-black px-2.5 py-1 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer whitespace-nowrap"
@@ -1012,6 +1042,32 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
                               </a>
                             ) : (
                               <span className="text-[#FB7185] font-black text-[9px] uppercase">No Web</span>
+                            )}
+
+                            {lead.emails && lead.emails.length > 0 && (
+                              <a
+                                href={`mailto:${lead.emails[0]}`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#00F59B]/20 text-[#00A86B] hover:underline font-black rounded border border-black text-[10px]"
+                                title={lead.emails.join(', ')}
+                              >
+                                <Mail className="w-2.5 h-2.5 stroke-[2.5]" />
+                                <span className="max-w-[100px] truncate">{lead.emails[0]}</span>
+                              </a>
+                            )}
+
+                            {lead.linkedin_company_url && (
+                              <a
+                                href={lead.linkedin_company_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-800 hover:underline font-black rounded border border-black text-[10px]"
+                                title="LinkedIn Azienda"
+                              >
+                                <svg className="w-2.5 h-2.5 fill-current shrink-0" viewBox="0 0 24 24">
+                                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.39 9.74v-8.37H5.07v8.37h2.78Z" />
+                                </svg>
+                                <span>LinkedIn</span>
+                              </a>
                             )}
 
                             {/* List Badge */}
@@ -1134,6 +1190,9 @@ export const ProspectsCrmView: React.FC<ProspectsCrmViewProps> = ({
                             latitude: 0,
                             longitude: 0,
                             audit: lead.audit,
+                            emails: lead.emails,
+                            linkedin_company_url: lead.linkedin_company_url,
+                            linkedin_profiles: lead.linkedin_profiles,
                           })
                         }
                         className="neo-btn bg-white hover:bg-slate-100 text-black text-[11px] font-black px-2.5 py-1 shadow-[1.5px_1.5px_0px_0px_#000]"

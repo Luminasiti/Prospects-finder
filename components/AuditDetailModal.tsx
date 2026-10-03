@@ -21,8 +21,19 @@ import {
   Phone, 
   Globe, 
   Layers,
-  Loader2 
+  Loader2,
+  Users,
+  Send,
+  RefreshCw,
+  Briefcase
 } from 'lucide-react';
+import { PersonProfile } from '@/lib/types';
+
+const LinkedinIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.39 9.74v-8.37H5.07v8.37h2.78Z" />
+  </svg>
+);
 
 interface AuditDetailModalProps {
   business: Business | null;
@@ -37,8 +48,58 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
   onReAudit,
   isReAuditing,
 }) => {
-  const [copiedPitch, setCopiedPitch] = useState(false);
-  const [activeTab, setActiveTab] = useState<'technical' | 'ai_design' | 'pitch'>('technical');
+  const [copiedPitchType, setCopiedPitchType] = useState<'email' | 'linkedin' | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'technical' | 'ai_design' | 'pitch' | 'contacts'>('pitch');
+  const [pitchFormat, setPitchFormat] = useState<'email' | 'linkedin'>('email');
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [contacts, setContacts] = useState<{
+    emails: string[];
+    linkedin_company_url?: string | null;
+    linkedin_profiles?: PersonProfile[];
+  }>({
+    emails: business?.emails || [],
+    linkedin_company_url: business?.linkedin_company_url || null,
+    linkedin_profiles: business?.linkedin_profiles || [],
+  });
+
+  // Sync contacts when business changes or auto-enrich
+  React.useEffect(() => {
+    if (!business) return;
+    setContacts({
+      emails: business.emails || [],
+      linkedin_company_url: business.linkedin_company_url || null,
+      linkedin_profiles: business.linkedin_profiles || [],
+    });
+
+    if (business.website_url && (!business.emails || business.emails.length === 0)) {
+      handleEnrichContacts();
+    }
+  }, [business?.id]);
+
+  const handleEnrichContacts = async () => {
+    if (!business || !business.website_url || isEnriching) return;
+    try {
+      setIsEnriching(true);
+      const res = await fetch('/api/leads/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setContacts({
+          emails: data.emails || [],
+          linkedin_company_url: data.linkedin_company_url || null,
+          linkedin_profiles: data.linkedin_profiles || [],
+        });
+      }
+    } catch (err) {
+      console.warn('Enrichment error in modal:', err);
+    } finally {
+      setIsEnriching(false);
+    }
+  };
 
   if (!business) return null;
 
@@ -46,11 +107,42 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
   const aiCritique = audit?.ai_critique;
   const score = audit?.score;
 
-  const handleCopyPitch = () => {
-    if (!aiCritique?.redesign_pitch) return;
-    navigator.clipboard.writeText(aiCritique.redesign_pitch);
-    setCopiedPitch(true);
-    setTimeout(() => setCopiedPitch(false), 2000);
+  const emailPitchText = aiCritique?.email_pitch || aiCritique?.redesign_pitch || `Oggetto: ${business.name}: Quel dettaglio sul vostro sito che allontana i clienti
+
+Gentile Team di ${business.name},
+
+analizzando il vostro sito web (${business.website_url || 'online'}), ho notato che presenta alcuni problemi di velocità e visualizzazione da smartphone che stanno facendo perdere contatti preziosi a favore dei concorrenti.
+
+Per questo motivo, abbiamo GIÀ sviluppato un prototipo moderno e ultra-veloce del vostro nuovo sito web. Risolve ogni problema di design e velocità ed è ottimizzato per convertire le visite in clienti.
+
+Avreste 10 minuti questa settimana per dargli un'occhiata insieme senza impegno?
+Potete prenotare una breve chiamata qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+Un cordiale saluto,
+Il Team di Luminasiti`;
+
+  const linkedinPitchText = aiCritique?.linkedin_pitch || `Buongiorno [Nome],
+
+visitando il sito di ${business.name} ho notato che la lentezza su smartphone e il design datato stanno frenando l'acquisizione di nuovi clienti.
+
+Abbiamo preso l'iniziativa: abbiamo GIÀ creato un prototipo moderno e ultra-veloce del vostro nuovo sito web.
+
+Avreste 10 minuti per vederlo insieme senza impegno?
+Potete fissare un momento comodo qui: [LINK PER PRENOTARE LA CHIAMATA / CALENDLY]
+
+A presto!`;
+
+  const handleCopyPitch = (type: 'email' | 'linkedin') => {
+    const textToCopy = type === 'email' ? emailPitchText : linkedinPitchText;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedPitchType(type);
+    setTimeout(() => setCopiedPitchType(null), 2000);
+  };
+
+  const handleCopyEmailAddress = (email: string) => {
+    navigator.clipboard.writeText(email);
+    setCopiedEmail(email);
+    setTimeout(() => setCopiedEmail(null), 2000);
   };
 
   const getScoreBadge = (val: number | null | undefined) => {
@@ -135,22 +227,22 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="px-5 border-b-2 border-black bg-slate-900/60 flex items-center gap-3">
+        <div className="px-5 border-b-2 border-black bg-slate-900/60 flex items-center gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('technical')}
-            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'technical'
                 ? 'border-[#38BDF8] text-[#38BDF8]'
                 : 'border-transparent text-slate-400 hover:text-white'
             }`}
           >
             <Layers className="w-4 h-4 stroke-[2.5]" />
-            <span>TECHNICAL AUDIT (5 PILLARS)</span>
+            <span>TECHNICAL AUDIT</span>
           </button>
 
           <button
             onClick={() => setActiveTab('ai_design')}
-            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'ai_design'
                 ? 'border-[#C084FC] text-[#C084FC]'
                 : 'border-transparent text-slate-400 hover:text-white'
@@ -167,14 +259,31 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
 
           <button
             onClick={() => setActiveTab('pitch')}
-            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'pitch'
                 ? 'border-[#FFE600] text-[#FFE600]'
                 : 'border-transparent text-slate-400 hover:text-white'
             }`}
           >
-            <Mail className="w-4 h-4 stroke-[2.5]" />
-            <span>COLD PITCH SCRIPT</span>
+            <Send className="w-4 h-4 stroke-[2.5]" />
+            <span>OUTREACH SCRIPTS (ITALIANO)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('contacts')}
+            className={`py-3 text-xs font-black border-b-3 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'contacts'
+                ? 'border-[#00F59B] text-[#00F59B]'
+                : 'border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4 stroke-[2.5]" />
+            <span>CONTATTI & LINKEDIN</span>
+            {contacts.emails.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-[#00F59B] text-black font-black border border-black shadow-[1px_1px_0px_0px_#000]">
+                {contacts.emails.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -418,62 +527,316 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: AGENCY OUTREACH PITCH */}
+          {/* TAB 3: AGENCY OUTREACH PITCH SCRIPTS */}
           {activeTab === 'pitch' && (
             <div className="space-y-4">
-              <div className="neo-card bg-slate-900 border-2 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-[#FFE600] stroke-[2.5]" />
-                    <h3 className="font-black text-sm text-white">
-                      TAILORED REDESIGN PITCH SCRIPT
-                    </h3>
-                  </div>
+              {/* Pitch Format Switcher */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border-2 border-black p-3 rounded-2xl shadow-[3px_3px_0px_0px_#000]">
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={handleCopyPitch}
-                    className="neo-btn flex items-center gap-1.5 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black px-3 py-1.5 shadow-[2px_2px_0px_0px_#000]"
+                    onClick={() => setPitchFormat('email')}
+                    className={`neo-btn flex items-center gap-1.5 text-xs font-black px-3.5 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer ${
+                      pitchFormat === 'email'
+                        ? 'bg-[#FFE600] text-black'
+                        : 'bg-black text-slate-300 hover:text-white'
+                    }`}
                   >
-                    {copiedPitch ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>COPIED!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>COPY SCRIPT</span>
-                      </>
-                    )}
+                    <Mail className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>📧 EMAIL OUTREACH (ITALIANO)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPitchFormat('linkedin')}
+                    className={`neo-btn flex items-center gap-1.5 text-xs font-black px-3.5 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer ${
+                      pitchFormat === 'linkedin'
+                        ? 'bg-[#38BDF8] text-black'
+                        : 'bg-black text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <LinkedinIcon className="w-3.5 h-3.5" />
+                    <span>💼 LINKEDIN DM (ITALIANO)</span>
                   </button>
                 </div>
 
-                <div className="bg-black border-2 border-black rounded-xl p-4 text-xs font-mono font-bold text-slate-200 leading-relaxed whitespace-pre-wrap select-all shadow-[2px_2px_0px_0px_#000]">
-                  {aiCritique?.redesign_pitch ||
-                    `Hi ${business.name} team,\n\nI was browsing local services in your area and noticed your site has a few critical speed and mobile display issues that could be turning away prospective customers.\n\nWould you be open to a quick 2-minute video breakdown of how a modern redesign could boost your conversions?`}
+                <button
+                  onClick={() => handleCopyPitch(pitchFormat)}
+                  className="neo-btn flex items-center gap-1.5 bg-[#00F59B] hover:bg-[#00E58F] text-black text-xs font-black px-4 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer"
+                >
+                  {copiedPitchType === pitchFormat ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>COPIATO!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 stroke-[2.5]" />
+                      <span>COPIA TESTO</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Pitch Context Banner */}
+              <div className="neo-card bg-slate-900 border-2 border-black p-3.5 text-xs font-semibold text-slate-300 shadow-[3px_3px_0px_0px_#000] flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#FFE600] shrink-0" />
+                <p>
+                  Messaggio altamente persuasivo: evidenzia i punti critici di {business.name}, comunica che abbiamo <strong>già realizzato un prototipo veloce del nuovo sito</strong> e propone una verifica di <strong>10 minuti</strong> con prenotazione diretta.
+                </p>
+              </div>
+
+              {/* Pitch Script Content */}
+              <div className="neo-card bg-slate-900 border-2 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase text-[#FFE600] tracking-wider">
+                      {pitchFormat === 'email' ? 'TESTO EMAIL PERSONALIZZATO' : 'MESSAGGIO DIRETTO LINKEDIN'}
+                    </span>
+                  </div>
+                  {pitchFormat === 'email' && contacts.emails.length > 0 && (
+                    <span className="text-[11px] font-black text-[#00F59B]">
+                      Destinatario: {contacts.emails[0]}
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-black border-2 border-black rounded-xl p-4 text-xs font-mono font-bold text-slate-100 leading-relaxed whitespace-pre-wrap select-all shadow-[2px_2px_0px_0px_#000]">
+                  {pitchFormat === 'email' ? emailPitchText : linkedinPitchText}
                 </div>
               </div>
 
-              {/* Outreach Actions */}
-              <div className="flex items-center justify-end gap-3">
-                <a
-                  href={`tel:${business.phone}`}
-                  className="neo-btn flex items-center gap-2 bg-white hover:bg-slate-100 text-black text-xs font-black px-4 py-2 shadow-[3px_3px_0px_0px_#000]"
-                >
-                  <Phone className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Call {business.phone}</span>
-                </a>
-
-                {business.website_url && (
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
+                {pitchFormat === 'email' && (
                   <a
-                    href={business.website_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="neo-btn flex items-center gap-2 bg-[#38BDF8] hover:bg-cyan-400 text-black text-xs font-black px-4 py-2 shadow-[3px_3px_0px_0px_#000]"
+                    href={`mailto:${contacts.emails[0] || ''}?subject=${encodeURIComponent(`${business.name}: Prototipo nuovo sito web`)}&body=${encodeURIComponent(emailPitchText)}`}
+                    className="neo-btn flex items-center gap-2 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
                   >
-                    <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Open Live Website</span>
+                    <Mail className="w-4 h-4 stroke-[2.5]" />
+                    <span>Apri nel Client Email</span>
                   </a>
                 )}
+
+                {pitchFormat === 'linkedin' && (
+                  <a
+                    href={
+                      contacts.linkedin_company_url ||
+                      `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(business.name)}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="neo-btn flex items-center gap-2 bg-[#38BDF8] hover:bg-sky-400 text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
+                  >
+                    <LinkedinIcon className="w-4 h-4" />
+                    <span>Invia o Cerca su LinkedIn</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+
+                <a
+                  href={`tel:${business.phone}`}
+                  className="neo-btn flex items-center gap-2 bg-white hover:bg-slate-100 text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
+                >
+                  <Phone className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Chiama {business.phone}</span>
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: CONTACTS & LINKEDIN TEAM DISCOVERY */}
+          {activeTab === 'contacts' && (
+            <div className="space-y-5">
+              {/* Header Banner & Re-enrich Trigger */}
+              <div className="neo-card bg-slate-900 border-2 border-black p-4 flex flex-wrap items-center justify-between gap-3 shadow-[4px_4px_0px_0px_#000]">
+                <div>
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#00F59B] stroke-[2.5]" />
+                    <span>CONTATTI, EMAIL & LINKEDIN TEAM</span>
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-300 mt-0.5">
+                    Email estratte da Google & sito web (homepage, contatti, chi-siamo, privacy policy) e profili LinkedIn.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleEnrichContacts}
+                  disabled={isEnriching || !business.website_url}
+                  className="neo-btn flex items-center gap-1.5 bg-[#FFE600] hover:bg-[#FACC15] disabled:opacity-50 text-black text-xs font-black px-3.5 py-1.5 shadow-[2px_2px_0px_0px_#000] cursor-pointer"
+                  title="Esegui nuovamente la ricerca di contatti ed email"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 stroke-[2.5] ${isEnriching ? 'animate-spin' : ''}`} />
+                  <span>{isEnriching ? 'SCANSIONE IN CORSO...' : 'AGGIORNA CONTATTI'}</span>
+                </button>
+              </div>
+
+              {/* 1. DISCOVERED EMAILS */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs uppercase font-black tracking-wider text-slate-300 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[#FFE600] stroke-[2.5]" />
+                    <span>EMAIL AZIENDALI RILEVATE ({contacts.emails.length})</span>
+                  </h4>
+                  {contacts.emails.length > 0 && (
+                    <span className="text-[11px] font-bold text-slate-400">Filtrate da loghi ed estensioni asset</span>
+                  )}
+                </div>
+
+                {contacts.emails.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {contacts.emails.map((email, idx) => (
+                      <div
+                        key={idx}
+                        className="neo-card bg-slate-900 border-2 border-black p-3.5 flex items-center justify-between gap-3 shadow-[2.5px_2.5px_0px_0px_#000]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs font-black text-white block truncate" title={email}>
+                            {email}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold">
+                            {idx === 0 ? 'Email Principale' : 'Email Secondaria'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleCopyEmailAddress(email)}
+                            className="neo-btn bg-white hover:bg-slate-100 text-black p-1.5 text-xs shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
+                            title="Copia email"
+                          >
+                            {copiedEmail === email ? (
+                              <Check className="w-3.5 h-3.5 text-[#00F59B] stroke-[3]" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                            )}
+                          </button>
+
+                          <a
+                            href={`mailto:${email}?subject=${encodeURIComponent(`${business.name}: Prototipo nuovo sito web`)}&body=${encodeURIComponent(emailPitchText)}`}
+                            className="neo-btn bg-[#FFE600] hover:bg-[#FACC15] text-black p-1.5 text-xs shadow-[1.5px_1.5px_0px_0px_#000]"
+                            title="Invia email con pitch precompilato"
+                          >
+                            <Send className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="neo-card bg-black border-2 border-black p-4 text-xs font-semibold text-slate-400 shadow-[2px_2px_0px_0px_#000]">
+                    {isEnriching ? (
+                      <div className="flex items-center gap-2 text-slate-300">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#FFE600]" />
+                        <span>Ricerca automatica email sul sito in corso...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span>Nessun indirizzo email pubblico trovato direttamente nelle pagine web.</span>
+                        {business.website_url && (
+                          <a
+                            href={business.website_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#38BDF8] underline font-bold"
+                          >
+                            Apri sito web
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. LINKEDIN COMPANY & TEAM */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs uppercase font-black tracking-wider text-slate-300 flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-[#38BDF8] stroke-[2.5]" />
+                  <span>PAGINA LINKEDIN & PROFILI TEAM</span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Company LinkedIn Card */}
+                  <div className="neo-card bg-slate-900 border-2 border-black p-4 flex flex-col justify-between gap-3 shadow-[2.5px_2.5px_0px_0px_#000]">
+                    <div>
+                      <div className="flex items-center gap-2 text-white font-black text-xs mb-1">
+                        <LinkedinIcon className="w-4 h-4 text-[#38BDF8]" />
+                        <span>Azienda su LinkedIn</span>
+                      </div>
+                      <p className="text-xs text-slate-300 font-semibold">
+                        {contacts.linkedin_company_url
+                          ? 'Pagina aziendale ufficiale rilevata sul sito.'
+                          : 'Cerca la pagina aziendale ufficiale con un click.'}
+                      </p>
+                    </div>
+
+                    <a
+                      href={
+                        contacts.linkedin_company_url ||
+                        `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(business.name)}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="neo-btn flex items-center justify-center gap-2 bg-[#38BDF8] hover:bg-sky-400 text-black text-xs font-black py-2 shadow-[2px_2px_0px_0px_#000]"
+                    >
+                      <span>{contacts.linkedin_company_url ? 'Apri Pagina Aziendale' : 'Cerca Azienda su LinkedIn'}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+
+                  {/* Team Members & Founder Search */}
+                  {contacts.linkedin_profiles && contacts.linkedin_profiles.length > 0 ? (
+                    contacts.linkedin_profiles.map((person, idx) => (
+                      <div
+                        key={idx}
+                        className="neo-card bg-slate-900 border-2 border-black p-4 flex flex-col justify-between gap-3 shadow-[2.5px_2.5px_0px_0px_#000]"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 text-white font-black text-xs mb-1">
+                            <Users className="w-4 h-4 text-[#C084FC]" />
+                            <span className="truncate">{person.name}</span>
+                          </div>
+                          <span className="text-[10px] bg-[#C084FC]/20 text-[#C084FC] border border-[#C084FC]/40 px-2 py-0.5 rounded-md font-bold">
+                            {person.role || 'Fondatore / Team'}
+                          </span>
+                        </div>
+
+                        <a
+                          href={person.linkedin_url || person.linkedin_search_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="neo-btn flex items-center justify-center gap-2 bg-[#C084FC] hover:bg-purple-400 text-black text-xs font-black py-2 shadow-[2px_2px_0px_0px_#000]"
+                        >
+                          <LinkedinIcon className="w-3.5 h-3.5" />
+                          <span>{person.linkedin_url ? 'Visualizza Profilo' : 'Cerca su LinkedIn'}</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="neo-card bg-slate-900 border-2 border-black p-4 flex flex-col justify-between gap-3 shadow-[2.5px_2.5px_0px_0px_#000]">
+                      <div>
+                        <div className="flex items-center gap-2 text-white font-black text-xs mb-1">
+                          <Users className="w-4 h-4 text-[#FFE600]" />
+                          <span>Titolare & Dipendenti</span>
+                        </div>
+                        <p className="text-xs text-slate-300 font-semibold">
+                          Cerca direttamente su LinkedIn i profili delle persone che lavorano per {business.name}.
+                        </p>
+                      </div>
+
+                      <a
+                        href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(business.name)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="neo-btn flex items-center justify-center gap-2 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black py-2 shadow-[2px_2px_0px_0px_#000]"
+                      >
+                        <LinkedinIcon className="w-3.5 h-3.5" />
+                        <span>Cerca Dipendenti su LinkedIn</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

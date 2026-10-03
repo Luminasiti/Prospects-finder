@@ -25,7 +25,8 @@ import {
   CheckSquare,
   Square,
   Users,
-  Loader2
+  Loader2,
+  Mail
 } from 'lucide-react';
 import { SaveToListModal } from '@/components/SaveToListModal';
 
@@ -480,8 +481,8 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                   )}
                 </div>
 
-                {/* Contact Info & Website */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-400 mb-2.5 pl-6 font-semibold">
+                {/* Contact Info, Website, Emails & LinkedIn */}
+                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-slate-400 mb-2.5 pl-6 font-semibold">
                   <a
                     href={`tel:${b.phone}`}
                     onClick={(e) => e.stopPropagation()}
@@ -497,7 +498,7 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1 text-[#38BDF8] hover:text-cyan-300 hover:underline max-w-[200px] truncate"
+                      className="flex items-center gap-1 text-[#38BDF8] hover:text-cyan-300 hover:underline max-w-[180px] truncate"
                     >
                       <Globe className="w-3 h-3 shrink-0 stroke-[2.5]" />
                       <span className="truncate">{b.website_url}</span>
@@ -505,6 +506,39 @@ export const ResultsDrawer: React.FC<ResultsDrawerProps> = ({
                     </a>
                   ) : (
                     <span className="text-slate-500 italic">No website URL</span>
+                  )}
+
+                  {b.emails && b.emails.length > 0 && (
+                    <a
+                      href={`mailto:${b.emails[0]}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 text-[#00F59B] hover:underline font-bold max-w-[190px] truncate"
+                      title={b.emails.join(', ')}
+                    >
+                      <Mail className="w-3 h-3 shrink-0 stroke-[2.5]" />
+                      <span className="truncate">{b.emails[0]}</span>
+                      {b.emails.length > 1 && (
+                        <span className="text-[9px] bg-slate-800 text-[#00F59B] px-1 rounded-sm border border-slate-700">
+                          +{b.emails.length - 1}
+                        </span>
+                      )}
+                    </a>
+                  )}
+
+                  {b.linkedin_company_url && (
+                    <a
+                      href={b.linkedin_company_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 text-[#38BDF8] hover:underline font-bold"
+                      title="LinkedIn Azienda"
+                    >
+                      <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.39 9.74v-8.37H5.07v8.37h2.78Z" />
+                      </svg>
+                      <span>LinkedIn</span>
+                    </a>
                   )}
                 </div>
 
