@@ -10,7 +10,8 @@ import {
   Sparkles, 
   Loader2, 
   SlidersHorizontal,
-  Globe
+  Globe,
+  ChevronDown
 } from 'lucide-react';
 import { SearchBounds } from '@/lib/types';
 
@@ -31,15 +32,106 @@ interface ControlBarProps {
   onResultsLimitChange?: (limit: number) => void;
 }
 
-const QUICK_CATEGORIES = [
-  'Plumber',
-  'Dentist',
+export const POPULAR_NICHE_GROUPS = [
+  {
+    group: '🍽️ Food, Drink & Hospitality',
+    niches: [
+      'Restaurant',
+      'Pizzeria',
+      'Hotel',
+      'Agriturismo',
+      'Bed & Breakfast',
+      'Bar & Cafeteria',
+      'Bakery / Pasticceria',
+      'Catering Service',
+      'Wine Bar / Enoteca',
+      'Gelateria',
+    ],
+  },
+  {
+    group: '🏥 Health, Medical & Wellness',
+    niches: [
+      'Dentist',
+      'Medical Clinic / Poliambulatorio',
+      'Physiotherapist / Fisioterapia',
+      'Veterinarian / Veterinaria',
+      'Pharmacy / Farmacia',
+      'Chiropractor',
+      'Psychologist / Psicologia',
+      'Optician / Ottico',
+      'Hair Salon / Parrucchiere',
+      'Barbershop / Barbiere',
+      'Beauty Salon & Spa / Estetica',
+      'Gym & Fitness Studio / Palestra',
+    ],
+  },
+  {
+    group: '🔨 Home, Trades & Construction',
+    niches: [
+      'Plumber / Idraulico',
+      'Electrician / Elettricista',
+      'HVAC Contractor / Caldaie & Clima',
+      'Roofer / Coperture & Tetti',
+      'General Contractor / Impresa Edile',
+      'Painter / Imbianchino',
+      'Carpenter / Falegname',
+      'Locksmith / Fabbro',
+      'Cleaning Company / Pulizie',
+      'Landscaper / Giardiniere',
+      'Solar & Energy Solutions / Fotovoltaico',
+      'Pest Control / Disinfestazione',
+      'Windows & Doors / Infissi & Serramenti',
+    ],
+  },
+  {
+    group: '🚗 Automotive & Marine',
+    niches: [
+      'Auto Repair / Meccanico & Officina',
+      'Car Dealership / Concessionaria',
+      'Auto Body Shop / Carrozzeria',
+      'Tire Shop / Gommista',
+      'Car Wash & Detailing / Autolavaggio',
+      'Motorcycle Repair / Moto Officina',
+      'Car Rental / Noleggio Auto',
+      'Boat Rental / Noleggio Barche',
+    ],
+  },
+  {
+    group: '⚖️ Legal, Finance & Professional',
+    niches: [
+      'Lawyer / Studio Legale',
+      'Accountant / Commercialista',
+      'Real Estate Agency / Agenzia Immobiliare',
+      'Insurance Agency / Assicurazioni',
+      'Notary / Studio Notarile',
+      'Architect / Studio Architettura',
+      'Financial Advisor / Consulente Finanziario',
+      'Marketing & Web Agency',
+      'Photographer & Studio',
+    ],
+  },
+  {
+    group: '🛍️ Retail, Leisure & Services',
+    niches: [
+      'Boutique / Abbigliamento',
+      'Jewelry Store / Gioielleria',
+      'Pet Shop & Grooming / Toelettatura',
+      'Furniture Store / Arredamento',
+      'Bike Rental & Shop / Noleggio Bici',
+      'Event & Wedding Planner',
+      'Tattoo & Piercing Studio',
+    ],
+  },
+];
+
+const QUICK_SHORTCUTS = [
   'Restaurant',
-  'Roofer',
-  'HVAC Contractor',
-  'Electrician',
-  'Auto Repair',
+  'Hotel',
+  'Dentist',
+  'Plumber',
   'Lawyer',
+  'Auto Repair',
+  'Impresa Edile',
 ];
 
 export const ControlBar: React.FC<ControlBarProps> = ({
@@ -260,28 +352,65 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         </div>
       </div>
 
-      {/* Bottom Row: Quick Category Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
-        <span className={`${isLight ? 'text-slate-700' : 'text-slate-400'} text-[11px] font-black uppercase tracking-wider shrink-0`}>
-          Popular:
-        </span>
-        {QUICK_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => onCategoryChange(cat)}
-            className={`px-3 py-1 rounded-xl shrink-0 transition-all font-black text-xs cursor-pointer border-2 border-black ${
-              category.toLowerCase() === cat.toLowerCase()
-                ? 'bg-[#FFE600] text-black shadow-[2px_2px_0px_0px_#000]'
-                : isLight
-                  ? 'bg-white text-slate-800 hover:bg-slate-100 shadow-[1.5px_1.5px_0px_0px_#000]'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700 shadow-[1.5px_1.5px_0px_0px_#000]'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      {/* Bottom Row: Popular Niches Drop Box & Quick Shortcuts */}
+      <div className="flex items-center gap-2.5 overflow-x-auto pb-1 text-xs no-scrollbar flex-wrap sm:flex-nowrap">
+        {/* Popular Drop Box */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <label className={`${isLight ? 'text-slate-800' : 'text-slate-200'} text-[11px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0`}>
+            <Sparkles className="w-3.5 h-3.5 text-[#FFE600] fill-[#FFE600]" />
+            <span>Popular:</span>
+          </label>
+          <div className="relative">
+            <select
+              value={category}
+              onChange={(e) => {
+                if (e.target.value) onCategoryChange(e.target.value);
+              }}
+              className="bg-white border-2 border-black text-black font-black text-xs rounded-xl pl-3 pr-8 py-1.5 shadow-[2.5px_2.5px_0px_0px_#000] focus:shadow-[3.5px_3.5px_0px_0px_#FFE600] focus:outline-none cursor-pointer appearance-none min-w-[210px]"
+              title="Select from 50+ popular business niches"
+            >
+              <option value="" disabled>
+                -- Choose from 55+ Niches --
+              </option>
+              {POPULAR_NICHE_GROUPS.map((group) => (
+                <optgroup key={group.group} label={group.group} className="font-black text-slate-900 bg-slate-100">
+                  {group.niches.map((niche) => (
+                    <option key={niche} value={niche} className="font-bold text-black bg-white">
+                      {niche}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-black absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[3]" />
+          </div>
+        </div>
 
-        <div className={`ml-auto ${isLight ? 'text-slate-700' : 'text-slate-400'} text-[11px] font-bold hidden lg:block shrink-0`}>
+        {/* Quick shortcut pills */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="h-4 w-[2px] bg-black/20 shrink-0 mx-0.5 hidden sm:block" />
+          <span className={`${isLight ? 'text-slate-500' : 'text-slate-400'} text-[10px] font-black uppercase shrink-0 hidden md:inline`}>
+            Quick:
+          </span>
+          {QUICK_SHORTCUTS.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => onCategoryChange(cat)}
+              className={`px-2.5 py-1 rounded-xl shrink-0 transition-all font-black text-[11px] cursor-pointer border-2 border-black ${
+                category.toLowerCase() === cat.toLowerCase()
+                  ? 'bg-[#FFE600] text-black shadow-[2px_2px_0px_0px_#000]'
+                  : isLight
+                    ? 'bg-white text-slate-800 hover:bg-slate-100 shadow-[1.5px_1.5px_0px_0px_#000]'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700 shadow-[1.5px_1.5px_0px_0px_#000]'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <div className={`ml-auto ${isLight ? 'text-slate-700' : 'text-slate-400'} text-[11px] font-bold hidden xl:block shrink-0`}>
           {isRadius ? (
             <span>💡 <strong>Radius:</strong> Click map to reposition search zone</span>
           ) : (
