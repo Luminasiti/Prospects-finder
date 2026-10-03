@@ -25,15 +25,45 @@ import {
   Users,
   Send,
   RefreshCw,
-  Briefcase
+  Briefcase,
+  Bot,
+  Calendar,
+  MapPin,
+  Star,
+  MousePointerClick,
+  Calculator,
+  Crown,
+  FileCheck,
+  MessageSquare
 } from 'lucide-react';
 import { PersonProfile } from '@/lib/types';
+import { PITCH_ARGUMENTS, getRecommendedArgumentIds, PitchArgument } from '@/lib/pitchArguments';
 
 const LinkedinIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.39 9.74v-8.37H5.07v8.37h2.78Z" />
   </svg>
 );
+
+const renderArgIcon = (iconName: string) => {
+  switch (iconName) {
+    case 'Bot': return <Bot className="w-3.5 h-3.5 text-purple-400 stroke-[2.5]" />;
+    case 'Calendar': return <Calendar className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />;
+    case 'MapPin': return <MapPin className="w-3.5 h-3.5 text-rose-400 stroke-[2.5]" />;
+    case 'Zap': return <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />;
+    case 'Palette': return <Palette className="w-3.5 h-3.5 text-pink-400 stroke-[2.5]" />;
+    case 'ShieldAlert': return <ShieldAlert className="w-3.5 h-3.5 text-rose-400 stroke-[2.5]" />;
+    case 'MessageSquare': return <MessageSquare className="w-3.5 h-3.5 text-green-400 stroke-[2.5]" />;
+    case 'Star': return <Star className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />;
+    case 'MousePointerClick': return <MousePointerClick className="w-3.5 h-3.5 text-blue-400 stroke-[2.5]" />;
+    case 'TrendingUp': return <TrendingUp className="w-3.5 h-3.5 text-cyan-400 stroke-[2.5]" />;
+    case 'Calculator': return <Calculator className="w-3.5 h-3.5 text-indigo-400 stroke-[2.5]" />;
+    case 'Crown': return <Crown className="w-3.5 h-3.5 text-amber-400 stroke-[2.5]" />;
+    case 'Globe': return <Globe className="w-3.5 h-3.5 text-teal-400 stroke-[2.5]" />;
+    case 'FileCheck': return <FileCheck className="w-3.5 h-3.5 text-slate-300 stroke-[2.5]" />;
+    default: return <Sparkles className="w-3.5 h-3.5 text-amber-400 stroke-[2.5]" />;
+  }
+};
 
 interface AuditDetailModalProps {
   business: Business | null;
@@ -53,6 +83,15 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState<'technical' | 'ai_design' | 'pitch' | 'contacts'>('pitch');
   const [pitchFormat, setPitchFormat] = useState<'email' | 'linkedin'>('email');
   const [isEnriching, setIsEnriching] = useState(false);
+  
+  // Custom Pitch Arguments State
+  const [selectedArgIds, setSelectedArgIds] = useState<string[]>([]);
+  const [argCategoryFilter, setArgCategoryFilter] = useState<string>('Tutti');
+  const [isGeneratingPitch, setIsGeneratingPitch] = useState<boolean>(false);
+  const [customEmailPitch, setCustomEmailPitch] = useState<string | null>(null);
+  const [customLinkedinPitch, setCustomLinkedinPitch] = useState<string | null>(null);
+  const [appliedArgTags, setAppliedArgTags] = useState<string[]>([]);
+
   const [contacts, setContacts] = useState<{
     emails: string[];
     linkedin_company_url?: string | null;
@@ -63,7 +102,7 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
     linkedin_profiles: business?.linkedin_profiles || [],
   });
 
-  // Sync contacts when business changes or auto-enrich
+  // Sync contacts and auto-recommend pitch arguments when business changes
   React.useEffect(() => {
     if (!business) return;
     setContacts({
@@ -72,10 +111,57 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
       linkedin_profiles: business.linkedin_profiles || [],
     });
 
+    const recommended = getRecommendedArgumentIds(business.audit, business.name, business.address);
+    setSelectedArgIds(recommended);
+    setCustomEmailPitch(null);
+    setCustomLinkedinPitch(null);
+    setAppliedArgTags([]);
+
     if (business.website_url && (!business.emails || business.emails.length === 0)) {
       handleEnrichContacts();
     }
   }, [business?.id]);
+
+  const handleToggleArgument = (argId: string) => {
+    setSelectedArgIds(prev => 
+      prev.includes(argId) ? prev.filter(id => id !== argId) : [...prev, argId]
+    );
+  };
+
+  const handleSelectAllRecommended = () => {
+    if (!business) return;
+    const recommended = getRecommendedArgumentIds(business.audit, business.name, business.address);
+    setSelectedArgIds(recommended);
+  };
+
+  const handleGeneratePitch = async () => {
+    if (!business || isGeneratingPitch) return;
+    try {
+      setIsGeneratingPitch(true);
+      const res = await fetch('/api/audit/generate-pitch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: business.name,
+          category: business.name,
+          websiteUrl: business.website_url,
+          selectedArgumentIds: selectedArgIds,
+          audit: business.audit,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCustomEmailPitch(data.email_pitch);
+        setCustomLinkedinPitch(data.linkedin_pitch);
+        setAppliedArgTags(data.selectedArguments || []);
+      }
+    } catch (err) {
+      console.error('Pitch generation error:', err);
+    } finally {
+      setIsGeneratingPitch(false);
+    }
+  };
 
   const handleEnrichContacts = async () => {
     if (!business || !business.website_url || isEnriching) return;
@@ -107,7 +193,7 @@ export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({
   const aiCritique = audit?.ai_critique;
   const score = audit?.score;
 
-  const emailPitchText = aiCritique?.email_pitch || aiCritique?.redesign_pitch || `Oggetto: ${business.name}: Quel dettaglio sul vostro sito che allontana i clienti
+  const emailPitchText = customEmailPitch || aiCritique?.email_pitch || aiCritique?.redesign_pitch || `Oggetto: ${business.name}: Quel dettaglio sul vostro sito che allontana i clienti
 
 Gentile Team di ${business.name},
 
@@ -121,7 +207,7 @@ Potete prenotare una breve chiamata qui: [LINK PER PRENOTARE LA CHIAMATA / CALEN
 Un cordiale saluto,
 Il Team di Luminasiti`;
 
-  const linkedinPitchText = aiCritique?.linkedin_pitch || `Buongiorno [Nome],
+  const linkedinPitchText = customLinkedinPitch || aiCritique?.linkedin_pitch || `Buongiorno [Nome],
 
 visitando il sito di ${business.name} ho notato che la lentezza su smartphone e il design datato stanno frenando l'acquisizione di nuovi clienti.
 
@@ -527,118 +613,247 @@ A presto!`;
             </div>
           )}
 
-          {/* TAB 3: AGENCY OUTREACH PITCH SCRIPTS */}
+          {/* TAB 3: AGENCY OUTREACH PITCH SCRIPTS WITH INTERACTIVE ARGUMENT PICKER */}
           {activeTab === 'pitch' && (
-            <div className="space-y-4">
-              {/* Pitch Format Switcher */}
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border-2 border-black p-3 rounded-2xl shadow-[3px_3px_0px_0px_#000]">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPitchFormat('email')}
-                    className={`neo-btn flex items-center gap-1.5 text-xs font-black px-3.5 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer ${
-                      pitchFormat === 'email'
-                        ? 'bg-[#FFE600] text-black'
-                        : 'bg-black text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <Mail className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>📧 EMAIL OUTREACH (ITALIANO)</span>
-                  </button>
-
-                  <button
-                    onClick={() => setPitchFormat('linkedin')}
-                    className={`neo-btn flex items-center gap-1.5 text-xs font-black px-3.5 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer ${
-                      pitchFormat === 'linkedin'
-                        ? 'bg-[#38BDF8] text-black'
-                        : 'bg-black text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <LinkedinIcon className="w-3.5 h-3.5" />
-                    <span>💼 LINKEDIN DM (ITALIANO)</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => handleCopyPitch(pitchFormat)}
-                  className="neo-btn flex items-center gap-1.5 bg-[#00F59B] hover:bg-[#00E58F] text-black text-xs font-black px-4 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer"
-                >
-                  {copiedPitchType === pitchFormat ? (
-                    <>
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>COPIATO!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4 stroke-[2.5]" />
-                      <span>COPIA TESTO</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Pitch Context Banner */}
-              <div className="neo-card bg-slate-900 border-2 border-black p-3.5 text-xs font-semibold text-slate-300 shadow-[3px_3px_0px_0px_#000] flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#FFE600] shrink-0" />
-                <p>
-                  Messaggio altamente persuasivo: evidenzia i punti critici di {business.name}, comunica che abbiamo <strong>già realizzato un prototipo veloce del nuovo sito</strong> e propone una verifica di <strong>10 minuti</strong> con prenotazione diretta.
-                </p>
-              </div>
-
-              {/* Pitch Script Content */}
-              <div className="neo-card bg-slate-900 border-2 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase text-[#FFE600] tracking-wider">
-                      {pitchFormat === 'email' ? 'TESTO EMAIL PERSONALIZZATO' : 'MESSAGGIO DIRETTO LINKEDIN'}
-                    </span>
+            <div className="space-y-5">
+              {/* 1. SELEZIONE DEGLI ARGOMENTI PER IL MESSAGGIO */}
+              <div className="neo-card bg-slate-900 border-2 border-black p-4 shadow-[4px_4px_0px_0px_#000] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-black text-[#FFE600] uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#FFE600] fill-[#FFE600]" />
+                      <span>1. Scegli gli Argomenti Chiave dell'Outreach</span>
+                    </h3>
+                    <p className="text-xs font-semibold text-slate-300 mt-0.5">
+                      Seleziona i punti da affrontare: quelli contrassegnati con <span className="text-[#FFE600] font-black">✨ Consigliato</span> sono emersi dall'audit di {business.name}.
+                    </p>
                   </div>
-                  {pitchFormat === 'email' && contacts.emails.length > 0 && (
-                    <span className="text-[11px] font-black text-[#00F59B]">
-                      Destinatario: {contacts.emails[0]}
-                    </span>
-                  )}
+
+                  {/* Quick Select Actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllRecommended}
+                      className="neo-btn bg-[#FFE600] hover:bg-[#FACC15] text-black text-[11px] font-black px-2.5 py-1 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
+                    >
+                      ✨ Seleziona Consigliati
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedArgIds([])}
+                      className="neo-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-black px-2.5 py-1 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
+                    >
+                      Deseleziona
+                    </button>
+                  </div>
                 </div>
 
-                <div className="bg-black border-2 border-black rounded-xl p-4 text-xs font-mono font-bold text-slate-100 leading-relaxed whitespace-pre-wrap select-all shadow-[2px_2px_0px_0px_#000]">
-                  {pitchFormat === 'email' ? emailPitchText : linkedinPitchText}
+                {/* Category Filter Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                  {['Tutti', 'AI & Visibilità', 'Conversioni & Vendite', 'Tecnico & Performance', 'Fiducia & Brand'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setArgCategoryFilter(cat)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer border ${
+                        argCategoryFilter === cat
+                          ? 'bg-white text-black border-black shadow-[1.5px_1.5px_0px_0px_#000]'
+                          : 'bg-black/50 text-slate-400 border-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Grid of Arguments */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
+                  {PITCH_ARGUMENTS
+                    .filter(arg => argCategoryFilter === 'Tutti' || arg.category === argCategoryFilter)
+                    .map(arg => {
+                      const isSelected = selectedArgIds.includes(arg.id);
+                      const isRec = arg.isRecommended(business.audit, business.name, business.address);
+
+                      return (
+                        <div
+                          key={arg.id}
+                          onClick={() => handleToggleArgument(arg.id)}
+                          className={`p-2.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between select-none ${
+                            isSelected
+                              ? 'bg-amber-500/15 border-[#FFE600] shadow-[2px_2px_0px_0px_#FFE600]'
+                              : 'bg-black/60 border-slate-800 hover:border-slate-600 shadow-[1.5px_1.5px_0px_0px_#000]'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-1.5 mb-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {}} // handled by parent div onClick
+                                  className="w-3.5 h-3.5 rounded border border-black accent-[#FFE600] cursor-pointer shrink-0"
+                                />
+                                {renderArgIcon(arg.icon)}
+                                <span className={`text-xs font-black truncate leading-tight ${isSelected ? 'text-[#FFE600]' : 'text-white'}`}>
+                                  {arg.shortTag}
+                                </span>
+                              </div>
+
+                              {isRec && (
+                                <span className="text-[9px] font-black bg-[#FFE600] text-black px-1.5 py-0.2 rounded border border-black shadow-[1px_1px_0px_0px_#000] shrink-0">
+                                  ✨ Consigliato
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-medium text-slate-300 leading-snug pl-5 line-clamp-2">
+                              {arg.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Big Generate Button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGeneratePitch}
+                    disabled={isGeneratingPitch || selectedArgIds.length === 0}
+                    className="w-full neo-btn flex items-center justify-center gap-2 bg-[#FFE600] hover:bg-[#FACC15] disabled:opacity-50 text-black py-2.5 text-xs font-black shadow-[3px_3px_0px_0px_#000] cursor-pointer"
+                  >
+                    {isGeneratingPitch ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin stroke-[3]" />
+                        <span>GENERAZIONE COPIA CON AI IN CORSO...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 fill-black" />
+                        <span>GENERA EMAIL & MESSAGGIO ({selectedArgIds.length} ARGOMENTI SELEZIONATI)</span>
+                        <Sparkles className="w-4 h-4 fill-black" />
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
-                {pitchFormat === 'email' && (
-                  <a
-                    href={`mailto:${contacts.emails[0] || ''}?subject=${encodeURIComponent(`${business.name}: Prototipo nuovo sito web`)}&body=${encodeURIComponent(emailPitchText)}`}
-                    className="neo-btn flex items-center gap-2 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
+              {/* 2. ANTEPRIMA SCRIPT GENERATO (EMAIL / LINKEDIN) */}
+              <div className="space-y-3">
+                {/* Format Switcher & Copy Header */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border-2 border-black p-3 rounded-2xl shadow-[3px_3px_0px_0px_#000]">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPitchFormat('email')}
+                      className={`neo-btn flex items-center gap-1.5 text-xs font-black px-3.5 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer ${
+                        pitchFormat === 'email'
+                          ? 'bg-[#FFE600] text-black'
+                          : 'bg-black text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <Mail className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>📧 EMAIL OUTREACH (ITALIANO)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPitchFormat('linkedin')}
+                      className={`neo-btn flex items-center gap-1.5 text-xs font-black px-3.5 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer ${
+                        pitchFormat === 'linkedin'
+                          ? 'bg-[#38BDF8] text-black'
+                          : 'bg-black text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <LinkedinIcon className="w-3.5 h-3.5" />
+                      <span>💼 LINKEDIN DM (ITALIANO)</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => handleCopyPitch(pitchFormat)}
+                    className="neo-btn flex items-center gap-1.5 bg-[#00F59B] hover:bg-[#00E58F] text-black text-xs font-black px-4 py-2 shadow-[2px_2px_0px_0px_#000] cursor-pointer"
                   >
-                    <Mail className="w-4 h-4 stroke-[2.5]" />
-                    <span>Apri nel Client Email</span>
-                  </a>
+                    {copiedPitchType === pitchFormat ? (
+                      <>
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>COPIATO!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 stroke-[2.5]" />
+                        <span>COPIA TESTO</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Applied Topics Tags */}
+                {appliedArgTags.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap px-1">
+                    <span className="text-[11px] font-black uppercase text-slate-400">Argomenti integrati:</span>
+                    {appliedArgTags.map((tag, idx) => (
+                      <span key={idx} className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#00F59B]/20 text-[#00F59B] border border-[#00F59B]/40">
+                        ✓ {tag}
+                      </span>
+                    ))}
+                  </div>
                 )}
 
-                {pitchFormat === 'linkedin' && (
-                  <a
-                    href={
-                      contacts.linkedin_company_url ||
-                      `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(business.name)}`
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="neo-btn flex items-center gap-2 bg-[#38BDF8] hover:bg-sky-400 text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
-                  >
-                    <LinkedinIcon className="w-4 h-4" />
-                    <span>Invia o Cerca su LinkedIn</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
+                {/* Pitch Content Card */}
+                <div className="neo-card bg-slate-900 border-2 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-[#FFE600] tracking-wider">
+                        {pitchFormat === 'email' ? 'TESTO EMAIL PERSONALIZZATO' : 'MESSAGGIO DIRETTO LINKEDIN'}
+                      </span>
+                    </div>
+                    {pitchFormat === 'email' && contacts.emails.length > 0 && (
+                      <span className="text-[11px] font-black text-[#00F59B]">
+                        Destinatario: {contacts.emails[0]}
+                      </span>
+                    )}
+                  </div>
 
-                <a
-                  href={`tel:${business.phone}`}
-                  className="neo-btn flex items-center gap-2 bg-white hover:bg-slate-100 text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
-                >
-                  <Phone className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Chiama {business.phone}</span>
-                </a>
+                  <div className="bg-black border-2 border-black rounded-xl p-4 text-xs font-mono font-bold text-slate-100 leading-relaxed whitespace-pre-wrap select-all shadow-[2px_2px_0px_0px_#000]">
+                    {pitchFormat === 'email' ? emailPitchText : linkedinPitchText}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
+                  {pitchFormat === 'email' && (
+                    <a
+                      href={`mailto:${contacts.emails[0] || ''}?subject=${encodeURIComponent(`${business.name}: Prototipo nuovo sito web`)}&body=${encodeURIComponent(emailPitchText)}`}
+                      className="neo-btn flex items-center gap-2 bg-[#FFE600] hover:bg-[#FACC15] text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
+                    >
+                      <Mail className="w-4 h-4 stroke-[2.5]" />
+                      <span>Apri nel Client Email</span>
+                    </a>
+                  )}
+
+                  {pitchFormat === 'linkedin' && (
+                    <a
+                      href={
+                        contacts.linkedin_company_url ||
+                        `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(business.name)}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="neo-btn flex items-center gap-2 bg-[#38BDF8] hover:bg-sky-400 text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
+                    >
+                      <LinkedinIcon className="w-4 h-4" />
+                      <span>Invia o Cerca su LinkedIn</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+
+                  <a
+                    href={`tel:${business.phone}`}
+                    className="neo-btn flex items-center gap-2 bg-white hover:bg-slate-100 text-black text-xs font-black px-4 py-2.5 shadow-[3px_3px_0px_0px_#000]"
+                  >
+                    <Phone className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Chiama {business.phone}</span>
+                  </a>
+                </div>
               </div>
             </div>
           )}
